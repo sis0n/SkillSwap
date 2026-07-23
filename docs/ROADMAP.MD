@@ -38,7 +38,7 @@ Prepare the development environment and project architecture.
 - [x] Configure PostgreSQL (Docker)
 - [x] Configure Docker
 - [x] Setup environment variables
-- [ ] Configure authentication
+- [x] Configure authentication
 - [x] Create project structure
 - [x] Create documentation
 
@@ -89,11 +89,11 @@ Allow users to securely create and access accounts.
 
 ### Features
 
-- [ ] Register
-- [ ] Login
-- [ ] Logout
-- [ ] Email Verification
-- [ ] Current User Endpoint
+- [x] Register
+- [x] Login
+- [x] Logout
+- [x] Email Verification
+- [x] Current User Endpoint
 
 ### Deliverables
 
@@ -290,8 +290,8 @@ Deploy the MVP for public access.
 
 The MVP is considered complete when users can:
 
-- [ ] Register an account
-- [ ] Login
+- [x] Register an account
+- [x] Login
 - [ ] Create a profile
 - [ ] Add teaching skills
 - [ ] Add learning skills
@@ -347,7 +347,7 @@ The following features are intentionally excluded from the MVP.
 | Database Design      | ✅ Complete    |
 | API Design           | ✅ Complete    |
 | Project Setup        | ✅ Complete    |
-| Backend Development  | ⏳ Phase 2 Done |
+| Backend Development  | ⏳ Phase 3 Done |
 | Frontend Development | ⏳ Pending     |
 | Testing              | ⏳ Pending     |
 | Deployment           | ⏳ Pending     |
