@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Models\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,7 @@ class SocialAuthService
 
         return DB::transaction(function () use ($provider, $socialiteUser) {
             $user = User::create([
+                'role_id' => Role::findBySlug(Role::USER)->id,
                 'first_name' => $this->extractFirstName($socialiteUser),
                 'middle_name' => null,
                 'last_name' => $this->extractLastName($socialiteUser),

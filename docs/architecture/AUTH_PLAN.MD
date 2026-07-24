@@ -1,7 +1,7 @@
 # SkillSwap Authentication Implementation Plan
 
-> Version: 3.0.0
-> Status: Approved — Social OAuth Added (Google)
+> Version: 3.1.0
+> Status: Approved — Role Architecture Added
 > Authentication: Laravel Sanctum SPA (HTTP-only cookies, database sessions)
 > Deployment: React SPA on Vercel → Laravel API on Render → PostgreSQL on Supabase
 
@@ -31,8 +31,9 @@
 16. [Recommended Implementation Order](#16-recommended-implementation-order)
 17. [Deployment Configuration](#17-deployment-configuration)
 18. [Complete Checklist](#18-complete-checklist)
-19. [Deployment Roadmap](#19-deployment-roadmap)
-20. [Future Session Security Capabilities](#20-future-session-security-capabilities)
+19. [Role Architecture](#19-role-architecture)
+20. [Deployment Roadmap](#20-deployment-roadmap)
+21. [Future Session Security Capabilities](#21-future-session-security-capabilities)
 
 ---
 
@@ -1263,11 +1264,168 @@ VITE_API_URL=https://skillswap-api.onrender.com
 - [x] Logout → session destroyed
 - [x] Unauthenticated access to protected routes → 401 error
 - [x] Me endpoint returns user data without password
+- [x] Login rate limited to 5 attempts per minute per email (throttle:login)
 - [x] 30 test cases pass covering all scenarios
 
 ---
 
-# 19. OAuth / Social Authentication
+# 19. Role Architecture
+
+## Overview
+
+Users are assigned a role via a normalized `roles` table rather than a string column. This keeps the schema clean and makes future authorization simpler.
+
+## Database
+
+### roles
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint (PK) | |
+| name | string | Display name |
+| slug | string (unique) | Stable identifier for lookups — never hardcoded by ID |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+### users (modified)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| role_id | bigint (FK → roles.id) | Always set, never nullable |
+
+## Relationship
+
+```
+Role
+    hasMany(User)
+
+User
+    belongsTo(Role)
+```
+
+## Initial Roles
+
+| Name | Slug | Constant |
+|------|------|----------|
+| Admin | admin | `Role::ADMIN` |
+| User | user | `Role::USER` |
+
+## Registration Behavior
+
+All new users (email registration, Google OAuth, any future provider) automatically receive the **User** role.
+
+Role assignment is server-only and never accepted from client input.
+
+## Role Model — Constants & Lookup
+
+Role slugs are defined as class constants to prevent typos:
+
+```php
+const ADMIN = 'admin';
+const USER = 'user';
+```
+
+A centralized `findBySlug()` method looks up by slug and throws `ModelNotFoundException` if the role does not exist:
+
+```php
+public static function findBySlug(string $slug): self
+{
+    return static::where('slug', $slug)->firstOrFail();
+}
+```
+
+Usage:
+
+```php
+'role_id' => Role::findBySlug(Role::USER)->id,
+```
+
+This replaces the previous `firstOrCreate()` pattern. Roles are system data that must exist after seeding. A missing role is a deployment failure, not a runtime condition to silently recover from.
+
+## User Model — Convenience Methods
+
+```php
+$user->isAdmin();  // $user->role->slug === Role::ADMIN
+$user->isUser();   // $user->role->slug === Role::USER
+```
+
+These keep authorization code readable and simplify expansion when additional roles are introduced.
+
+## Eager Loading
+
+The role relationship is loaded explicitly only where it is needed (login response, current user endpoint) rather than globally via `protected $with`. This avoids unnecessary joins on queries that do not require role information, such as background jobs, analytics, or unrelated feature queries.
+
+Examples:
+
+```php
+// Login — explicit eager load
+User::with('role')->where('email', $request->email)->first();
+
+// Current user — load on authenticated instance
+$request->user()->load('role');
+```
+
+## Seeders
+
+`RoleSeeder` inserts the two initial roles. It is called from `DatabaseSeeder` before `SkillCategorySeeder`. Tests seed roles via the base `TestCase::setUp()` method to ensure `findBySlug()` never fails during testing.
+
+## API Response
+
+The `UserResource` includes the full role object:
+
+```json
+{
+  "user": {
+    "id": 1,
+    "role": {
+      "id": 2,
+      "name": "User",
+      "slug": "user"
+    },
+    ...
+  }
+}
+```
+
+## System Roles (Immutable)
+
+The `Admin` and `User` roles are system records. Future administrative features must not allow:
+
+- Deleting the Admin or User role
+- Renaming system role slugs
+- Creating duplicate system roles
+
+These roles should be treated as application infrastructure, not user-managed data.
+
+## Prepared for Future Authorization
+
+The current architecture supports these future additions without a database redesign:
+
+- **Role middleware** — Gate routes by `$user->isAdmin()`
+- **Authorization policies** — Use `$user->role->slug` in policy methods
+- **Admin dashboard protection** — Check `$user->isAdmin()` before serving admin routes
+
+No RBAC or permissions system is implemented yet. The normalized `roles` table is a foundation, not a full authorization system.
+
+## Future Roles (not MVP)
+
+New roles can be added to the `roles` table without schema changes:
+
+- Moderator
+- Mentor
+- Organization
+- Instructor
+- Company
+
+## Not Implemented (Out of Scope)
+
+No permissions, RBAC, or authorization logic is implemented. The role architecture is structural only.
+
+---
+
+# 20. OAuth / Social Authentication
+
+> This section's numbering has been updated. All internal references within this section remain unchanged.
 
 ## Overview
 
@@ -1366,7 +1524,7 @@ Redirect to FRONTEND_URL/auth/callback → Frontend callback page → init sessi
 - Transaction rollback on failure
 - Configurable frontend URL
 
-## 19. Deployment Roadmap
+## 21. Deployment Roadmap
 
 The SkillSwap project will progress through three deployment stages. Each stage has different capabilities and limitations.
 
@@ -1451,13 +1609,13 @@ Stage 3: Production (FOR LAUNCH)
 
 ---
 
-# 20. Future Session Security Capabilities
+# 22. Future Session Security Capabilities
 
 Because SkillSwap uses **server-side database sessions** (`SESSION_DRIVER=database`), the following security features become possible in future phases. They require no additional infrastructure — only application code.
 
 These features are **not required for the MVP**. They are documented here so the architecture accounts for them from the start.
 
-## 20.1 Logout from All Devices
+## 22.1 Logout from All Devices
 
 ```php
 // Invalidate all sessions for a user
@@ -1468,7 +1626,7 @@ DB::table('sessions')->where('user_id', $user->id)->delete();
 
 **Privacy/UX:** Inform the user that all other devices will be signed out.
 
-## 20.2 Active Session Management
+## 22.2 Active Session Management
 
 Users can view a list of currently active sessions (similar to Gmail, GitHub, Facebook):
 
@@ -1481,7 +1639,7 @@ Users can view a list of currently active sessions (similar to Gmail, GitHub, Fa
 
 **When to implement:** Settings page (Phase 4 or later).
 
-## 20.3 Session Revocation
+## 22.3 Session Revocation
 
 Users can manually revoke a specific session (e.g., "I lost my phone"):
 
@@ -1495,7 +1653,7 @@ DB::table('sessions')
 
 **When to implement:** Same as active session management.
 
-## 20.4 Password-Change Session Invalidation
+## 22.4 Password-Change Session Invalidation
 
 When a user changes their password, all existing sessions (except the current one) are automatically invalidated:
 
@@ -1512,7 +1670,7 @@ public function invalidateOtherSessions(string $currentSessionId): void
 
 **Best practice:** This prevents a stolen session from surviving a password change.
 
-## 20.5 Suspicious Login Detection
+## 22.5 Suspicious Login Detection
 
 Using the `ip_address` and `user_agent` columns in the `sessions` table, the application can detect:
 
@@ -1523,7 +1681,7 @@ Using the `ip_address` and `user_agent` columns in the `sessions` table, the app
 
 **When to implement:** Post-MVP security hardening (Phase 11 or later).
 
-## 20.6 Rate Limiting per Session
+## 22.6 Rate Limiting per Session
 
 ```php
 // Track requests per session for abuse detection
@@ -1532,7 +1690,7 @@ Using the `ip_address` and `user_agent` columns in the `sessions` table, the app
 
 **When to implement:** If abuse becomes a concern post-launch.
 
-## 20.7 Device Management UI (Wireframe)
+## 22.7 Device Management UI (Wireframe)
 
 ```
 Settings → Security

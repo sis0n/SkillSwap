@@ -44,6 +44,12 @@ Current Status: Pending
 
 ---
 
+## Previous Phase
+
+Phase 3.75 — Role Architecture: Completed
+
+---
+
 # MVP Milestones
 
 ## Phase 1 — Project Foundation
@@ -120,6 +126,7 @@ Progress
 
 - [x] Register — handles 4 cases (new, verified, unverified+active, unverified+expired)
 - [x] Login — checks email verification before Auth::attempt()
+- [x] Login — rate limited to 5 attempts/min per email (throttle:login)
 - [x] Logout — session invalidation
 - [x] Email Verification (6-digit code with 10-min expiry, single-use, bcrypt-hashed)
 - [x] Resend code — 60s cooldown, invalidates old codes
@@ -248,6 +255,40 @@ Status: Completed
 - [x] DATABASE.MD — social_accounts table, updated users notes
 - [x] API.MD — OAuth endpoints and flow
 - [x] AUTH_PLAN.MD — new section with architecture, flow, security
+- [x] ROADMAP.MD — this checklist
+
+---
+
+## Phase 3.75 — Role Architecture
+
+Status: Completed
+
+### Backend
+- [x] Create `roles` table migration (id, name, slug, timestamps)
+- [x] Create `add_role_id_to_users` migration
+- [x] Role model with `hasMany(User)` relationship, constants (`Role::USER`, `Role::ADMIN`), `findBySlug()` static method
+- [x] Update User model — `belongsTo(Role)`, `role_id` in fillable, `isAdmin()` / `isUser()` methods
+- [x] RoleSeeder — inserts Admin and User roles by slug
+- [x] Update DatabaseSeeder to call RoleSeeder first
+- [x] Update UserFactory — centralized lookup via `Role::findBySlug(Role::USER)`
+- [x] Update AuthController::register() — centralized lookup via `Role::findBySlug(Role::USER)`
+- [x] Update SocialAuthService::createUser() — centralized lookup via `Role::findBySlug(Role::USER)`
+
+### Infrastructure
+- [x] Removed all `firstOrCreate()` calls — roles fail loudly when missing
+- [x] Tests seed roles via `TestCase::setUp()` for consistent test environment
+
+### API
+- [x] UserResource includes role object (id, name, slug)
+- [x] Role relationship loaded explicitly only where needed (login, me) — no global `$with`
+
+### Testing
+- [x] All 55 tests pass with role_id constraint
+
+### Documentation
+- [x] DATABASE.MD — roles table added, users table updated
+- [x] API.MD — user response includes role
+- [x] AUTH_PLAN.MD — Role Architecture section (section 19) with constants, lookup, convenience methods, system immutability
 - [x] ROADMAP.MD — this checklist
 
 ---

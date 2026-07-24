@@ -9,6 +9,28 @@ This document defines the database design for the SkillSwap MVP.
 
 ## Core Tables
 
+### roles
+
+**Purpose:**
+Defines user roles for the platform. Normalized design enables role lookup by slug instead of hardcoded IDs.
+
+| Column | Type      | Nullable | Notes           |
+| ------ | --------- | -------- | --------------- |
+| id     | bigint    | No       | Primary Key     |
+| name   | string    | No       | Display name    |
+| slug   | string    | No       | Unique key      |
+| created_at | timestamp | No    | Record creation |
+| updated_at | timestamp | No    | Last update     |
+
+**Seed data:**
+
+| Name  | Slug  | Constant   |
+| ----- | ----- | ---------- |
+| Admin | admin | `Role::ADMIN` |
+| User  | user  | `Role::USER`  |
+
+**System roles:** Admin and User are system records. They are not user-managed data. Future administrative features must not allow deleting, renaming, or duplicating these roles.
+
 ### users
 
 **Purpose:**
@@ -17,6 +39,7 @@ Stores authentication credentials and the primary identity of every registered u
 | Column            | Type      | Nullable | Notes                        |
 | ----------------- | --------- | -------- | ---------------------------- |
 | id                | bigint    | No       | Primary Key                  |
+| role_id           | bigint FK | No       | References roles.id          |
 | first_name        | string    | No       | User's first name            |
 | middle_name       | string    | Yes      | User's middle name           |
 | last_name         | string    | No       | User's last name             |
@@ -30,6 +53,10 @@ Stores authentication credentials and the primary identity of every registered u
 | updated_at        | timestamp | No       | Last update                  |
 
 ### Relationships
+
+Belongs To
+
+- Role
 
 Has One
 

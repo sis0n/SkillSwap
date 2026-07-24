@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\Auth\VerifyCodeRequest;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Mail\EmailVerificationCode;
 use App\Models\EmailVerification;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -83,6 +84,7 @@ class AuthController extends BaseController
         }
 
         $user = User::create([
+            'role_id' => Role::findBySlug(Role::USER)->id,
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
@@ -103,7 +105,7 @@ class AuthController extends BaseController
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        $user = User::withRole()->where('email', $request->email)->first();
 
         if (!$user) {
             return $this->error(
@@ -155,7 +157,7 @@ class AuthController extends BaseController
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user()->load('role');
 
         return $this->success(
             data: [

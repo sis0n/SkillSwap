@@ -19,7 +19,8 @@ Route::name('api.')
                 ->name('auth.register');
 
             Route::post('login', [AuthController::class, 'login'])
-                ->name('auth.login');
+                ->name('auth.login')
+                ->middleware('throttle:login');
 
             Route::post('email/send-code', [AuthController::class, 'sendVerificationCode'])
                 ->name('auth.email.send-code');

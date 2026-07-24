@@ -10,6 +10,7 @@ use App\Models\LearningSession;
 use App\Models\Message;
 use App\Models\Profile;
 use App\Models\Review;
+use App\Models\Role;
 use App\Models\SessionResource;
 use App\Models\User;
 use App\Models\UserAvailability;
@@ -20,7 +21,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([SkillCategorySeeder::class]);
+        $this->call([
+            RoleSeeder::class,
+            SkillCategorySeeder::class,
+        ]);
 
         $users = User::factory(10)->create();
 

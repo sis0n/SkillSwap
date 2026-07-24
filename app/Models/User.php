@@ -7,7 +7,9 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -20,6 +22,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     use HasApiTokens, HasFactory, MustVerifyEmailTrait, Notifiable;
 
     protected $fillable = [
+        'role_id',
         'first_name',
         'middle_name',
         'last_name',
@@ -40,6 +43,26 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role->slug === Role::ADMIN;
+    }
+
+    public function isUser(): bool
+    {
+        return $this->role->slug === Role::USER;
+    }
+
+    public function scopeWithRole(Builder $query): Builder
+    {
+        return $query->with('role');
     }
 
     public function profile(): HasOne

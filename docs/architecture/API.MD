@@ -164,6 +164,11 @@ Authenticate with email and password. Only verified accounts can log in.
   "data": {
     "user": {
       "id": 1,
+      "role": {
+        "id": 2,
+        "name": "User",
+        "slug": "user"
+      },
       "first_name": "John",
       "last_name": "Doe",
       "username": "johndoe",
