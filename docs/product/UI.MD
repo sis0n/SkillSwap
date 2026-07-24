@@ -55,9 +55,27 @@ Pages:
 
 ---
 
+## Verification Layout
+
+Used for authenticated users whose email is not yet verified.
+
+Access is restricted to email verification only.
+
+Components:
+
+- Navbar (simplified — no navigation links, only logout)
+- Main Content
+- Footer
+
+Pages:
+
+- Email Verification
+
+---
+
 ## Authenticated Layout
 
-Used for logged-in users.
+Used for logged-in users with verified emails.
 
 Components:
 
@@ -89,6 +107,14 @@ Pages:
 - Marketplace
 - Login
 - Register
+
+---
+
+## Verification Navigation
+
+Visible only to authenticated users with unverified email addresses.
+
+- Logout
 
 ---
 
@@ -168,6 +194,70 @@ Create a new account.
 ### APIs
 
 POST /api/v1/auth/register
+
+---
+
+## Email Verification
+
+### Purpose
+
+Verify a newly registered email address using a 6-digit code before granting full application access.
+
+### User Flow
+
+1. User submits the registration form.
+2. Backend handles one of four cases:
+   - **Case 1 (new email)**: User created, code sent, redirect to verification.
+   - **Case 2 (verified email)**: Registration rejected — email already registered.
+   - **Case 3 (unverified, code active)**: Redirect to verification — code already sent, reuse existing.
+   - **Case 4 (unverified, code expired)**: Account updated, new code sent, redirect to verification.
+3. User is redirected to the Email Verification page (not authenticated).
+4. The verification code was sent during registration. The user enters the 6-digit code.
+5. Code is validated (10-min expiry, single-use, bcrypt-hashed).
+6. Email is marked as verified, code is invalidated.
+7. User is redirected to the Login page with a success message.
+8. User logs in and accesses the Dashboard.
+
+### Components
+
+- Verification Code Input (6 individual digit inputs with auto-advance and paste support)
+- Resend Code Button (with 60-second cooldown timer)
+- Expiration Display (shows when the current code expires)
+- Registration Message Banner (informs user about the registration case)
+- Error Messages (invalid code, expired code, no code found, resend cooldown)
+- Success State (verified — link to login page)
+- Missing Email State (prompts user to register first)
+
+### States
+
+- **No Email**: Email query param missing. Prompt user to register.
+- **Pending**: Code input ready. User enters the 6-digit code.
+- **Submitting**: Code is being validated. Inputs and resend button disabled.
+- **Error — Invalid Code**: Message displayed. Inputs cleared. Allow retry.
+- **Error — Expired Code**: Message displayed. Prompt user to request a new code.
+- **Error — No Code Found**: Message displayed. Prompt user to request a new code.
+- **Error — Resend Cooldown**: Button shows remaining seconds. Disabled until cooldown ends.
+- **Success (Verified)**: Email verified. "Sign In" button navigates to `/login?verified=true`.
+
+### Registration Case Messaging
+
+When redirected from registration, the page shows an info banner:
+- **Cases 1, 4**: "Registration successful. Please verify your email." or "Registration successful. A new verification code has been sent to your email."
+- **Case 3**: "A verification code has already been sent to this email."
+
+### API Behavior
+
+- Code expires 10 minutes after creation.
+- Codes are single-use (invalidated after successful verification).
+- Codes become invalid after a resend (old codes are marked as used).
+- 60-second resend cooldown enforced server-side.
+- Verification page does NOT auto-send a code on mount. The initial code is sent by the registration endpoint.
+- The resend button is the only way to request a new code after the initial send.
+
+### APIs
+
+POST /api/v1/auth/email/send-code
+POST /api/v1/auth/email/verify-code
 
 ---
 
@@ -428,6 +518,7 @@ Manage account preferences.
 - Rating Stars
 - Loading Spinner
 - Empty State
+- Verification Code Input (6 individual digit slots + auto-advance)
 
 ---
 

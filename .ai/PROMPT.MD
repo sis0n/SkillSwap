@@ -1,26 +1,27 @@
 # SkillSwap AI Prompt
 
-> Version: 1.0.0
+> Version: 2.0.0
 
 ---
 
 # Purpose
 
-This document defines the current development phase and task for the SkillSwap project.
+This document defines the current development phase, implementation scope, and active tasks for the SkillSwap project.
 
-Before generating any code, always follow the instructions below.
+Before generating any code, always read this document together with the project documentation.
 
 ---
 
 # Required Context
 
-Always read these files before starting any task:
+Always read these files before starting any task.
 
 ## AI Context
 
 - .ai/SKILL.md
 - .ai/CODING_RULES.md
 - .ai/WORKFLOW.md
+- .ai/PROMPT.md
 
 ## Project Documentation
 
@@ -28,6 +29,8 @@ Always read these files before starting any task:
 - docs/FEATURES.md
 - docs/DATABASE.md
 - docs/API.md
+- docs/UI.md
+- docs/DESIGN_SYSTEM.md
 - docs/ROADMAP.md
 
 These documents are the project's source of truth.
@@ -38,51 +41,80 @@ Never generate code that contradicts them.
 
 # General Rules
 
+Always:
+
+- Follow the current roadmap phase.
 - Follow Laravel best practices.
+- Follow React and TypeScript best practices.
 - Generate production-ready code.
 - Reuse existing code whenever possible.
-- Do not duplicate logic.
-- Keep controllers thin.
-- Use Form Requests for validation.
-- Use Eloquent relationships.
-- Use API Resources for API responses.
-- Keep documentation synchronized with the implementation.
-- If requirements are unclear, ask for clarification instead of making assumptions.
+- Keep documentation synchronized with implementation.
+- Ask for clarification if requirements are unclear.
+
+Never:
+
+- Skip roadmap tasks.
+- Implement future phases.
+- Invent undocumented features.
+- Invent undocumented API endpoints.
+- Invent undocumented database tables.
+- Invent undocumented UI pages.
 
 ---
 
 # Current Development Phase
 
-Phase 2 — Database
+Phase 4 — User Profiles
 
 ---
 
 # Current Objective
 
-Implement the database layer for the SkillSwap MVP.
+Implement the complete User Profiles module for the MVP.
 
 ---
 
 # Current Scope
 
-Only work on:
+## Backend
 
-- Database
-- Laravel Migrations
-- Eloquent Models
-- Relationships
-- Foreign Keys
-- Indexes
-- Seeders (if requested)
+- Profile API
+- Update profile
+- Avatar upload
+- Availability
+- Experience level
+- Location
 
-Do NOT work on:
+## Frontend
 
-- Authentication
-- Controllers
-- Services
-- API Endpoints
-- Frontend
-- Testing
+- Profile page
+- Edit profile page
+- Avatar component
+- Availability component
+- Responsive layout
+- Light mode
+- Dark mode
+
+## Documentation
+
+Update when necessary:
+
+- API.md
+- FEATURES.md
+- UI.md
+- DESIGN_SYSTEM.md
+- ROADMAP.md
+
+## Excluded
+
+Do not implement:
+
+- Skills
+- Marketplace
+- Exchange Requests
+- Messaging
+- Learning Sessions
+- Reviews
 
 Unless explicitly requested.
 
@@ -90,49 +122,71 @@ Unless explicitly requested.
 
 # Current Tasks
 
-- Analyze `docs/DATABASE.md`
-- Create migrations in the correct dependency order.
-- Create Eloquent models.
-- Define `$fillable` properties.
-- Define `$casts`.
-- Define model relationships.
-- Add foreign key constraints.
-- Add indexes where appropriate.
-- Follow Laravel naming conventions.
+Complete every unfinished task for the current roadmap phase.
 
----
+Before implementing:
 
-# Expected Output
+1. Read the relevant documentation.
+2. Review existing code.
+3. Identify affected files.
+4. Explain the implementation plan.
 
-For each table:
+During implementation:
 
-1. Explain the implementation plan.
-2. Generate the migration.
-3. Generate the model.
-4. Define relationships.
-5. Wait for confirmation before proceeding to the next table unless instructed otherwise.
+- Generate complete backend code.
+- Generate complete frontend code.
+- Keep the implementation consistent with the documentation.
 
-Do not skip tables.
+After implementation:
 
-Do not invent undocumented fields or relationships.
+- Summarize the completed work.
+- List modified files.
+- Mention documentation updates.
+- Wait for user approval before continuing.
 
 ---
 
 # Completion Criteria
 
-This phase is complete when:
+The current phase is complete when:
 
-- All database tables have been created.
-- All migrations run successfully.
-- All Eloquent models exist.
-- Relationships are correctly defined.
-- Foreign keys and indexes are implemented.
-- The implementation matches `docs/DATABASE.md`.
+Backend
+
+- All backend tasks are finished.
+
+Frontend
+
+- All frontend tasks are finished.
+
+Documentation
+
+- Documentation is synchronized.
+
+Testing
+
+- Required tests have been added when applicable.
+
+The implementation must match:
+
+- DATABASE.md
+- API.md
+- UI.md
+- DESIGN_SYSTEM.md
+- ROADMAP.md
 
 ---
 
 # Notes
 
-The current phase takes priority over future features.
+Only implement the current roadmap phase.
 
-Do not implement functionality outside the current scope unless explicitly requested by the user.
+Do not move to the next phase until the user explicitly approves.
+
+When the current phase changes, update only the following sections:
+
+- Current Development Phase
+- Current Objective
+- Current Scope
+- Current Tasks
+
+The rest of this document should remain unchanged throughout the project.

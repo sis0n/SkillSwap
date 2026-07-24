@@ -1,9 +1,9 @@
 # SkillSwap API Specification
 
-> Version: 1.0.0 (MVP)
+> Version: 2.0.0 (MVP)
 > API Style: REST
 > Base URL: /api/v1
-> Authentication: Laravel Sanctum
+> Authentication: Laravel Sanctum SPA (Session-based)
 > Response: JSON
 
 ---
@@ -19,7 +19,8 @@ This document defines the MVP API contract for SkillSwap.
 - RESTful endpoints
 - JSON request/response
 - Versioned API (`/api/v1`)
-- Authenticated endpoints require Sanctum
+- Authenticated endpoints require Sanctum SPA session authentication
+- CSRF protection via `/sanctum/csrf-cookie`
 - Pagination for list endpoints
 
 ---
@@ -57,29 +58,307 @@ This document defines the MVP API contract for SkillSwap.
 - 404 Not Found
 - 409 Conflict
 - 422 Validation Error
+- 429 Too Many Requests
 - 500 Internal Server Error
 
 ---
 
 # Authentication
 
-| Method | Endpoint       | Auth  |
-| ------ | -------------- | ----- |
-| POST   | /auth/register | Guest |
-| POST   | /auth/login    | Guest |
-| POST   | /auth/logout   | User  |
-| GET    | /auth/me       | User  |
+| Method | Endpoint                      | Auth  |
+| ------ | ----------------------------- | ----- |
+| POST   | /auth/register                | Guest |
+| POST   | /auth/login                   | Guest |
+| POST   | /auth/logout                  | User  |
+| GET    | /auth/me                      | User  |
+| POST   | /auth/email/send-code         | Guest |
+| POST   | /auth/email/verify-code       | Guest |
+| GET    | /auth/{provider}/redirect     | Guest |
+| GET    | /auth/{provider}/callback     | Guest |
 
-Register Fields:
+## POST /auth/register
 
-- first_name
-- middle_name (optional)
-- last_name
-- suffix (optional)
-- username
-- email
-- password
-- password_confirmation
+Register a new user account. Handles four distinct cases based on the email state.
+
+**Auth:** Guest
+
+**Request:**
+```json
+{
+  "first_name": "John",
+  "middle_name": null,
+  "last_name": "Doe",
+  "suffix": null,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "password123",
+  "password_confirmation": "password123"
+}
+```
+
+**Case 1 — Email does not exist (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Registration successful. Please verify your email.",
+  "data": {
+    "email": "john@example.com"
+  }
+}
+```
+
+**Case 2 — Email exists and is verified (409 Conflict):**
+```json
+{
+  "success": false,
+  "message": "This email is already registered.",
+  "errors": {
+    "email": ["This email is already registered."]
+  }
+}
+```
+
+**Case 3 — Email exists, unverified, code still valid (200 OK):**
+```json
+{
+  "success": true,
+  "message": "A verification code has already been sent to this email.",
+  "data": {
+    "email": "john@example.com"
+  }
+}
+```
+
+**Case 4 — Email exists, unverified, code expired (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Registration successful. A new verification code has been sent to your email.",
+  "data": {
+    "email": "john@example.com"
+  }
+}
+```
+
+---
+
+## POST /auth/login
+
+Authenticate with email and password. Only verified accounts can log in.
+
+**Auth:** Guest
+
+**Request:**
+```json
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Login successful.",
+  "data": {
+    "user": {
+      "id": 1,
+      "first_name": "John",
+      "last_name": "Doe",
+      "username": "johndoe",
+      "email": "john@example.com",
+      "email_verified_at": "2026-07-24T12:00:00.000000Z",
+      "created_at": "2026-07-24T12:00:00.000000Z",
+      "updated_at": "2026-07-24T12:00:00.000000Z"
+    }
+  }
+}
+```
+
+**Error — Invalid credentials (401):**
+```json
+{
+  "success": false,
+  "message": "Invalid email or password."
+}
+```
+
+**Error — Unverified email (403):**
+```json
+{
+  "success": false,
+  "message": "Please verify your email before logging in.",
+  "errors": {
+    "email": ["Email not yet verified."],
+    "requires_verification": true
+  }
+}
+```
+
+---
+
+## Email Verification (6-Digit Code)
+
+### POST /auth/email/send-code
+
+Send or resend a 6-digit verification code. Enforces a 60-second cooldown between requests.
+
+**Auth:** Guest (requires email)
+
+**Request:**
+```json
+{
+  "email": "john@example.com"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Verification code sent.",
+  "data": {
+    "expires_at": "2026-07-24T12:30:00.000000Z"
+  }
+}
+```
+
+**Error — Cooldown active (429):**
+```json
+{
+  "success": false,
+  "message": "Please wait before requesting a new code.",
+  "errors": {
+    "retry_after": 45
+  }
+}
+```
+
+**Error — Already verified (400):**
+```json
+{
+  "success": false,
+  "message": "Email already verified."
+}
+```
+
+### POST /auth/email/verify-code
+
+Verify an email address using a 6-digit code.
+
+**Auth:** Guest (requires email and code)
+
+**Request:**
+```json
+{
+  "email": "john@example.com",
+  "code": "123456"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Email verified successfully."
+}
+```
+
+**Error — Invalid code (422):**
+```json
+{
+  "success": false,
+  "message": "Invalid verification code.",
+  "errors": {
+    "code": ["The verification code is invalid."]
+  }
+}
+```
+
+**Error — Expired code (422):**
+```json
+{
+  "success": false,
+  "message": "Verification code has expired. Please request a new one.",
+  "errors": {
+    "code": ["The verification code has expired. Please request a new one."]
+  }
+}
+```
+
+**Error — No code found (422):**
+```json
+{
+  "success": false,
+  "message": "No verification code found. Please request a new one.",
+  "errors": {
+    "code": ["No verification code found. Please request a new one."]
+  }
+}
+```
+
+**Error — Already verified (200):**
+```json
+{
+  "success": true,
+  "message": "Email already verified."
+}
+```
+
+---
+
+## OAuth Authentication
+
+OAuth endpoints are web routes (not API routes) because they require browser redirects.
+
+These endpoints work with any configured provider (currently: `google`).
+
+Adding a new provider requires:
+1. Adding provider config to `config/services.php`
+2. Adding the provider to `SocialAuthService::PROVIDERS` whitelist
+
+### GET /auth/{provider}/redirect
+
+Redirect the user to the provider's OAuth consent screen.
+
+**Auth:** Guest
+
+**Response:** 302 Redirect to provider's OAuth URL.
+
+### GET /auth/{provider}/callback
+
+Handle the OAuth callback from the provider.
+
+**Auth:** Guest (but establishes a session on success)
+
+**Case 1 — Provider account already linked:**
+- Authenticate the existing linked user.
+- Regenerate the session.
+- Redirect to `FRONTEND_URL/auth/callback`.
+
+**Case 2 — Email exists but never linked to provider:**
+- Link the provider account to the existing user.
+- Auto-verify the email if unverified (provider confirms verification).
+- Authenticate, regenerate session.
+- Redirect to `FRONTEND_URL/auth/callback`.
+
+**Case 2 — Rejection (existing link cannot be overwritten):**
+- If the user already has a different provider account linked.
+- Redirect to `FRONTEND_URL/login?error=...`.
+
+**Case 3 — New email:**
+- Create a new user with `Hash::make(Str::random(64))` as password.
+- Save the provider identifier and avatar URL.
+- Set `email_verified_at` automatically.
+- Authenticate, regenerate session.
+- Redirect to `FRONTEND_URL/auth/callback`.
+
+**Error — Unverified provider email:**
+- Redirect to `FRONTEND_URL/login?error=...`.
+
+**Error — Provider exception or invalid state:**
+- Redirect to `FRONTEND_URL/login?error=...`.
 
 ---
 

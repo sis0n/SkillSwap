@@ -21,9 +21,11 @@ Route::name('api.')
             Route::post('login', [AuthController::class, 'login'])
                 ->name('auth.login');
 
-            Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-                ->middleware('signed')
-                ->name('auth.email.verify');
+            Route::post('email/send-code', [AuthController::class, 'sendVerificationCode'])
+                ->name('auth.email.send-code');
+
+            Route::post('email/verify-code', [AuthController::class, 'verifyCode'])
+                ->name('auth.email.verify-code');
 
             Route::middleware('auth:sanctum')->group(function (): void {
 
@@ -32,9 +34,6 @@ Route::name('api.')
 
                 Route::get('me', [AuthController::class, 'me'])
                     ->name('auth.me');
-
-                Route::post('email/verification-notification', [AuthController::class, 'resendVerification'])
-                    ->name('auth.email.verification.send');
 
             });
         });

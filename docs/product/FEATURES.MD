@@ -34,7 +34,7 @@ Provides secure user authentication and account management.
 - Logout
 - Forgot Password
 - Reset Password
-- Email Verification
+- Email Verification (6-digit code)
 
 ### User Story
 
@@ -43,6 +43,39 @@ As a new user,
 I want to create an account,
 
 So that I can use SkillSwap.
+
+---
+
+### Email Verification Flow
+
+#### After Registration
+
+1. User registers and is automatically authenticated.
+2. A 6-digit verification code is sent to the user's email.
+3. User is redirected to the Email Verification page.
+4. Dashboard and other protected pages are locked until verification succeeds.
+
+#### Verification Code
+
+- 6 numeric digits.
+- Randomly generated.
+- Single use only.
+- Expires after 10 minutes.
+- New code invalidates any previous code.
+
+#### Resend
+
+- Available after 60-second cooldown.
+- Generates a new code.
+- Invalidates the previous code.
+- Restarts the 10-minute timer.
+
+#### Login Before Verification
+
+- Unverified users can log in.
+- After login, they are redirected to verification instead of the dashboard.
+- Only verification and logout actions are available until verified.
+- After successful verification, full access is restored.
 
 ---
 
@@ -432,7 +465,7 @@ Support:
 - [ ] Login
 - [ ] Logout
 - [ ] Password Reset
-- [ ] Email Verification
+- [ ] Email Verification (6-digit code)
 
 ---
 

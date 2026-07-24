@@ -23,7 +23,7 @@ Stores authentication credentials and the primary identity of every registered u
 | suffix            | string    | Yes      | Jr., Sr., III, etc.          |
 | username          | string    | No       | Unique public username       |
 | email             | string    | No       | Unique email address         |
-| password          | string    | No       | Hashed password              |
+| password          | string    | No       | Hashed password (always NOT NULL — OAuth users get a random secure password) |
 | email_verified_at | timestamp | Yes      | Email verification timestamp |
 | remember_token    | string    | Yes      | Remember me token            |
 | created_at        | timestamp | No       | Record creation              |
@@ -37,6 +37,7 @@ Has One
 
 Has Many
 
+- SocialAccounts
 - UserSkills
 - ExchangeRequests (Sent)
 - ExchangeRequests (Received)
@@ -73,6 +74,33 @@ Relationships:
 - hasMany user_skills
 - hasMany exchange_requests (sender)
 - hasMany exchange_requests (receiver)
+
+### social_accounts
+
+**Purpose:** Links external OAuth provider accounts to SkillSwap users.
+
+| Column         | Type      | Nullable | Notes                                         |
+| -------------- | --------- | -------- | --------------------------------------------- |
+| id             | bigint    | No       | Primary Key                                   |
+| user_id        | bigint FK | No       | References users.id                            |
+| provider       | string    | No       | OAuth provider name (e.g. 'google', 'github') |
+| provider_id    | string    | No       | Unique identifier from the provider            |
+| provider_email | string    | Yes      | Email from the provider (for auditing/debug)   |
+| avatar_url     | string    | Yes      | External avatar URL from the provider          |
+| created_at     | timestamp | No       | Record creation                                |
+| updated_at     | timestamp | No       | Last update                                    |
+
+### Constraints
+
+- Unique per `(provider, provider_id)` — prevents duplicate provider links.
+- Unique per `(user_id, provider)` — one link per provider per user.
+
+### Notes
+
+- OAuth-only users have their `password` set to `Hash::make(Str::random(64))`.
+- The provider email is stored separately from the user's email for auditing.
+- Users can link multiple providers to a single SkillSwap account.
+- Provider `avatar_url` is stored as an external URL, not a local upload.
 
 ### profiles
 

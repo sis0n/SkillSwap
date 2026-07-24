@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\ExchangeRequestFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ExchangeRequest extends Model
 {
+    /** @use HasFactory<ExchangeRequestFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'sender_id',
         'receiver_id',

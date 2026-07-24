@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use Database\Factories\LearningSessionFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LearningSession extends Model
 {
+    /** @use HasFactory<LearningSessionFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'exchange_request_id',
         'title',

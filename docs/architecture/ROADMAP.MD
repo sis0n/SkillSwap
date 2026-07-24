@@ -1,6 +1,6 @@
 # SkillSwap Roadmap
 
-> Version: 3.0.0
+> Version: 4.0.0
 > Project Stage: Minimum Viable Product (MVP)
 
 ---
@@ -85,12 +85,12 @@ Status: Completed
 - [x] All MVP tables
 - [x] Foreign keys
 - [x] Indexes
-- [ ] Factories
-- [ ] Seeders
+- [x] Factories
+- [x] Seeders
 
 ### Frontend
 
-- [ ] API types
+- [x] API types
 
 ### Documentation
 
@@ -103,25 +103,152 @@ Status: Completed
 
 Status: Completed
 
+Progress
+
+- Backend API (Bearer Token): Completed
+- Backend Sanctum Migration: Completed
+- Frontend Infrastructure: Completed
+- Frontend Authentication UI: Completed
+- Registration Cases (1-4): Completed
+- Email Verification (6-digit code): Completed
+- Login with verification check: Completed
+- Resend cooldown: Completed
+- Testing: Completed (30 test cases, all passing)
+- Documentation: Completed
+
 ### Backend
 
-- [x] Register
-- [x] Login
-- [x] Logout
-- [x] Email Verification
+- [x] Register — handles 4 cases (new, verified, unverified+active, unverified+expired)
+- [x] Login — checks email verification before Auth::attempt()
+- [x] Logout — session invalidation
+- [x] Email Verification (6-digit code with 10-min expiry, single-use, bcrypt-hashed)
+- [x] Resend code — 60s cooldown, invalidates old codes
 - [x] Current User
+- [x] Email uniqueness enforced via controller logic
+- [x] Username uniqueness enforced via controller logic
 
-### Frontend
+### Backend — Sanctum SPA Migration (Completed)
 
-- [ ] Login page
-- [ ] Register page
-- [ ] Protected routes
-- [ ] Auth state
+- [x] Database sessions table and migration
+- [x] Sanctum stateful domains config
+- [x] CORS supports_credentials config
+- [x] Session driver config (database)
+- [x] AuthController session-based login/logout/register
+- [x] Sanctum middleware in api group
+
+### Frontend — Infrastructure
+
+- [x] Axios client (withCredentials, CSRF interceptors, 419 retry, 401 handler)
+- [x] Zustand auth store (session-based, no token, no localStorage)
+- [x] TanStack Query client and provider
+- [x] Auth hooks (useCurrentUser, useLogin, useRegister, useLogout)
+- [x] Shared API types and error handling
+- [x] Auth API layer (CSRF init, login, register, logout, getMe)
+- [x] Route-level code splitting (React.lazy + Suspense)
+- [x] Feature-based folder structure (features/auth/)
+- [x] Theme store system listener
+- [x] Route guards (session-based, minimal compatibility)
+
+### Frontend — Completed
+
+- [x] Login page form logic (React Hook Form + Zod + API integration)
+- [x] Register page form logic (React Hook Form + Zod + API integration)
+- [x] Form validation and error display
+- [x] Loading states and error handling in forms
+- [x] Global Error Boundary component
+
+### Frontend — Email Verification (Completed)
+
+- [x] Backend: Send 6-digit code endpoint (no auth required, accepts email body)
+- [x] Backend: Verify 6-digit code endpoint (no auth required, accepts email + code)
+- [x] Backend: Code expiration logic (10-min expiry, bcrypt-hashed, single-use)
+- [x] Backend: Resend cooldown logic (60s cooldown, checks latest code regardless of status)
+- [x] Backend: Route protection for unverified users (login blocks with 403, no session)
+- [x] Backend: 4 registration cases handled with appropriate responses
+- [x] Frontend: Email verification page (6-digit code input with paste support)
+- [x] Frontend: Resend code with cooldown timer
+- [x] Frontend: Registration message banner (shows context from registration case)
+- [x] Frontend: No auto-send on mount — code sent during registration, resend as needed
+- [x] Frontend: Redirect to `/login?verified=true` after successful verification
+- [x] Frontend: Block dashboard/protected routes for unverified users (login rejects unverified)
+
+### Testing
+
+- [x] Register — new email (Case 1)
+- [x] Register — verified email (Case 2)
+- [x] Register — unverified + valid code (Case 3)
+- [x] Register — unverified + expired code (Case 4)
+- [x] Register — duplicate username
+- [x] Register — password confirmation required
+- [x] Verify — valid code
+- [x] Verify — invalid code
+- [x] Verify — expired code
+- [x] Verify — used code
+- [x] Verify — old code invalid after resend
+- [x] Verify — already verified returns success
+- [x] Resend — before cooldown
+- [x] Resend — after cooldown
+- [x] Resend — only newest code accepted
+- [x] Login — verified account
+- [x] Login — unverified account (403, no session)
+- [x] Login — invalid password
+- [x] Login — nonexistent email
+- [x] Login — after successful verification
+- [x] Logout — authenticated user
+- [x] Protected routes — authenticated access
+- [x] Protected routes — unauthenticated (401)
+- [x] Me endpoint — no password exposed
+- [x] 30 total test cases, all passing
 
 ### Documentation
 
-- [x] API.md
-- [x] UI.md
+- [x] API.md — Updated with registration cases, verification, login behavior
+- [x] UI.md — Updated with verification flow
+- [x] AUTH_PLAN.md — Architecture plan with updated checklist
+- [x] ROADMAP.md — Updated with testing results
+
+---
+
+## Phase 3.5 — Social OAuth (Google)
+
+Status: Completed
+
+### Backend
+
+- [x] Install Laravel Socialite
+- [x] Create `social_accounts` table (provider-agnostic: provider, provider_id, provider_email, avatar_url)
+- [x] SocialAccount model with HasFactory
+- [x] Add `socialAccounts()` relationship to User model
+- [x] SocialAuthService with clear method separation (authenticate, createUser, linkAccount, etc.)
+- [x] SocialAuthController with provider-agnostic routing (`/auth/{provider}/redirect`, `/auth/{provider}/callback`)
+- [x] Provider whitelist validation (`['google']`)
+- [x] Google OAuth credentials in `config/services.php`
+- [x] Configurable `FRONTEND_URL` for redirects (via `config/app.php`)
+- [x] Password remains NOT NULL — OAuth users get `Hash::make(Str::random(64))`
+- [x] Provider email verification check before linking/creating
+- [x] Database transactions for multi-write operations
+- [x] Session regeneration after authentication
+- [x] Existing provider_id cannot be overwritten
+
+### Frontend
+
+- [x] GoogleLoginButton component (standard Google branding)
+- [x] OAuthCallbackPage (session-based auth, no query param dependency)
+- [x] Added Google button to LoginPage
+- [x] Added Google button to RegisterPage
+- [x] `/auth/callback` route in App.tsx
+
+### Testing
+
+- [x] 23 SocialAuthTest cases covering all 3 cases, error handling, and security scenarios
+- [x] All 55 tests pass (30 auth + 23 social + 2 infrastructure)
+
+### Documentation
+
+- [x] DATABASE.MD — social_accounts table, updated users notes
+- [x] API.MD — OAuth endpoints and flow
+- [x] AUTH_PLAN.MD — new section with architecture, flow, security
+- [x] ROADMAP.MD — this checklist
 
 ---
 
