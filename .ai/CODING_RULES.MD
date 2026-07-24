@@ -330,16 +330,71 @@ Tests should cover both successful and failed scenarios.
 
 # Documentation
 
-If new endpoints, tables, or features are added, update the appropriate documentation:
+The project documentation must always remain synchronized with the implementation.
 
+Update the appropriate document whenever changes are made.
+
+Project Documentation:
+
+- PLANNING.md
+- FEATURES.md
 - DATABASE.md
 - API.md
-- FEATURES.md
+- UI.md
+- DESIGN_SYSTEM.md
 - ROADMAP.md
 
-Keep documentation synchronized with the codebase.
+Examples:
+
+- Database changes → DATABASE.md
+- New API endpoints → API.md
+- New features → FEATURES.md
+- UI or page changes → UI.md
+- Design or component changes → DESIGN_SYSTEM.md
+- Completed milestones → ROADMAP.md
+
+Never leave the documentation outdated.
 
 ---
+
+# User Interface
+
+Always follow:
+
+docs/UI.md
+
+The UI documentation defines:
+
+- Pages
+- Layouts
+- Navigation
+- Components
+- User flows
+- API usage per page
+
+Do not invent pages or modify user flows unless explicitly requested.
+
+---
+
+# Design System
+
+Always follow:
+
+docs/DESIGN_SYSTEM.md
+
+The design system defines:
+
+- Theme
+- Colors
+- Typography
+- Spacing
+- Components
+- Responsive behavior
+- Accessibility
+
+All frontend code should remain consistent with the design system.
+
+Avoid creating inconsistent UI components.
 
 # AI Expectations
 

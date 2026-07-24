@@ -1,88 +1,125 @@
 # SkillSwap AI Workflow
 
-> Version: 1.0.0
+> Version: 2.0.0
 
 ---
 
 # Purpose
 
-This document defines the standard workflow the AI should follow when assisting with the SkillSwap project.
+This document defines the standard workflow the AI must follow when working on the SkillSwap project.
 
-The AI should follow this workflow before generating code, modifying existing code, or making architectural decisions.
+The workflow ensures every implementation is consistent with the project's architecture, documentation, coding standards, and current development phase.
+
+Never skip workflow steps unless explicitly instructed by the user.
 
 ---
 
 # Primary Objective
 
-Always generate production-ready code that is consistent with the project's architecture, documentation, and coding standards.
+Generate clean, production-ready code that aligns with the project's documentation, architecture, and current development phase.
 
-Do not make assumptions that contradict the project's documentation.
+Always prioritize correctness over speed.
 
 ---
 
 # Step 1 — Understand the Request
 
-Before writing code:
+Before generating any code:
 
 - Read the user's request carefully.
-- Identify the feature, bug, or enhancement being requested.
-- Determine whether the request belongs to the MVP or a future feature.
+- Identify whether it is:
+    - A new feature
+    - A bug fix
+    - A refactor
+    - A documentation update
+    - A UI change
+    - A database change
+    - An API change
 
-If the request is unclear, ask for clarification before generating code.
+If the request is unclear, ask for clarification before proceeding.
 
 ---
 
-# Step 2 — Read the Project Documentation
+# Step 2 — Read AI Context
 
-Use the documentation as the primary source of truth.
+Always read the AI documentation first.
 
-Read the following documents when they are relevant:
+Read:
+
+- .ai/SKILL.md
+- .ai/CODING_RULES.md
+- .ai/PROMPT.md
+
+Use these documents to understand:
+
+- Project context
+- Coding standards
+- Current development phase
+- Current objectives
+- Current scope
+
+---
+
+# Step 3 — Read Project Documentation
+
+Read only the documentation relevant to the current task.
+
+Available documentation:
 
 - docs/PLANNING.md
 - docs/FEATURES.md
 - docs/DATABASE.md
 - docs/API.md
+- docs/UI.md
+- docs/DESIGN_SYSTEM.md
 - docs/ROADMAP.md
 
-Never generate code that conflicts with these documents.
+Never generate code that contradicts these documents.
 
 ---
 
-# Step 3 — Review Existing Code
+# Step 4 — Review Existing Code
 
-Before creating new files or functions:
+Before creating anything:
 
-- Check whether similar functionality already exists.
-- Reuse existing services, models, and utilities whenever possible.
-- Follow the existing project structure.
-- Avoid duplicate logic.
+- Check existing implementations.
+- Reuse existing classes.
+- Reuse services.
+- Reuse components.
+- Follow existing project patterns.
 
-Do not rewrite working code unless the user requests refactoring.
+Avoid duplicate code.
 
----
-
-# Step 4 — Plan the Solution
-
-Before implementing a feature:
-
-- Identify the affected files.
-- Identify required database tables.
-- Identify related API endpoints.
-- Identify required models and relationships.
-- Identify validation rules.
-- Identify authorization requirements.
-
-If multiple implementation approaches exist, choose the simplest maintainable solution.
+Never rewrite working implementations unless requested.
 
 ---
 
-# Step 5 — Implement the Feature
+# Step 5 — Plan the Implementation
 
-Generate complete, production-ready code.
+Before coding, determine:
 
-Follow the project's coding standards.
+- Files to modify
+- New files to create
+- Database tables involved
+- Models involved
+- Relationships involved
+- API endpoints involved
+- UI pages involved
+- Components involved
+- Validation requirements
+- Authorization requirements
+
+Choose the simplest maintainable solution.
+
+---
+
+# Step 6 — Implement
+
+Generate complete implementations.
 
 When applicable, generate:
+
+Backend
 
 - Routes
 - Controllers
@@ -93,67 +130,105 @@ When applicable, generate:
 - API Resources
 - Migrations
 - Seeders
+- Factories
 - Tests
 
-Avoid placeholders and incomplete implementations.
+Frontend
+
+- Pages
+- Layouts
+- Components
+- Hooks
+- API Services
+- Forms
+- Validation
+- Responsive UI
+
+Do not generate incomplete implementations.
+
+Avoid placeholders.
 
 ---
 
-# Step 6 — Validate the Implementation
+# Step 7 — Validate
 
 Before finishing:
 
-- Check for syntax errors.
-- Verify Laravel best practices.
-- Verify naming consistency.
-- Verify database relationships.
-- Verify API consistency.
-- Verify security considerations.
+Verify:
 
-Ensure the implementation is complete.
+- Syntax
+- Laravel best practices
+- React best practices
+- TypeScript typing
+- Database relationships
+- API consistency
+- UI consistency
+- Design system consistency
+- Security
+- Performance
 
----
-
-# Step 7 — Explain the Changes
-
-After generating code:
-
-Provide a concise explanation that includes:
-
-- What was implemented
-- Which files were created or modified
-- Why the solution was chosen
-- Any important notes for integration
-
-Keep explanations brief and practical.
+Ensure the implementation is production-ready.
 
 ---
 
-# Documentation Updates
+# Step 8 — Documentation
 
-If the implementation changes the project structure, API, or database:
+Whenever the implementation changes the project, update the relevant documentation.
 
-Update the relevant documentation:
+Examples:
+
+Database changes
 
 - DATABASE.md
+
+API changes
+
 - API.md
+
+Feature changes
+
 - FEATURES.md
+
+UI changes
+
+- UI.md
+
+Design changes
+
+- DESIGN_SYSTEM.md
+
+Milestone completion
+
 - ROADMAP.md
 
-Do not leave documentation outdated.
+Documentation should never become outdated.
+
+---
+
+# Step 9 — Explain the Changes
+
+After implementation:
+
+Explain:
+
+- What was implemented
+- Files created
+- Files modified
+- Why the approach was chosen
+- Integration notes
+
+Keep explanations concise.
 
 ---
 
 # Error Handling
 
-If an error is encountered:
+If errors occur:
 
 - Identify the root cause.
-- Explain the issue clearly.
-- Suggest the simplest fix.
-- Avoid unnecessary complexity.
-
-Do not guess the cause of errors.
+- Explain the problem.
+- Recommend the simplest solution.
+- Avoid guessing.
 
 ---
 
@@ -161,10 +236,11 @@ Do not guess the cause of errors.
 
 When refactoring:
 
-- Preserve existing functionality.
+- Preserve behavior.
 - Improve readability.
 - Reduce duplication.
-- Maintain backward compatibility whenever possible.
+- Maintain compatibility.
+- Follow existing architecture.
 
 Avoid unnecessary rewrites.
 
@@ -172,19 +248,17 @@ Avoid unnecessary rewrites.
 
 # Security
 
-Always consider security.
+Always consider:
 
-Examples include:
-
-- Input validation
 - Authentication
 - Authorization
+- Validation
 - Password hashing
 - Mass assignment protection
-- SQL injection prevention
+- Secure API responses
 - Sensitive data protection
 
-Never sacrifice security for convenience.
+Security should never be optional.
 
 ---
 
@@ -192,54 +266,61 @@ Never sacrifice security for convenience.
 
 Prefer efficient solutions.
 
-When applicable:
+Examples:
 
-- Use eager loading.
-- Paginate large datasets.
-- Minimize database queries.
-- Avoid unnecessary loops.
-- Reuse existing resources.
+- Eager loading
+- Pagination
+- Database indexing
+- Query optimization
+- Component reuse
+- Lazy loading when appropriate
 
-Optimize only when it improves maintainability or performance.
+Optimize only when beneficial.
 
 ---
 
 # Communication
 
-When responding:
+Responses should be:
 
-- Be concise.
-- Be accurate.
-- Explain architectural decisions when necessary.
-- Avoid unnecessary repetition.
+- Accurate
+- Concise
+- Practical
+- Professional
 
-Focus on solving the user's request.
+Explain architectural decisions only when necessary.
+
+Avoid unnecessary repetition.
 
 ---
 
 # Development Principles
 
-The AI should always prioritize:
+Always prioritize:
 
 1. Correctness
 2. Simplicity
-3. Maintainability
-4. Readability
+3. Readability
+4. Maintainability
 5. Scalability
+6. Security
+7. Performance
 
-Never prioritize cleverness over clarity.
+Never sacrifice maintainability for clever solutions.
 
 ---
 
 # Completion Checklist
 
-Before considering a task complete, verify:
+Before considering any task complete, verify:
 
-- The request has been fully addressed.
-- The code follows the project standards.
-- The implementation is production-ready.
-- Existing functionality has not been broken.
-- Documentation remains accurate.
+- The user's request has been completed.
+- The implementation follows the current development phase.
+- The implementation follows project documentation.
+- The implementation follows coding standards.
+- The code is production-ready.
+- Existing functionality remains intact.
+- Documentation is synchronized.
 - No unnecessary code was introduced.
 
 Only consider the task complete after all checks have passed.
