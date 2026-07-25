@@ -114,6 +114,8 @@ class AuthController extends BaseController
             );
         }
 
+        // Unverified users are blocked from logging in. Verification ensures the user
+        // owns the email address and prevents account creation with unowned emails.
         if (!$user->hasVerifiedEmail()) {
             return $this->error(
                 message: 'Please verify your email before logging in.',

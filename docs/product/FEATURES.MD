@@ -32,8 +32,6 @@ Provides secure user authentication and account management.
 - Register
 - Login
 - Logout
-- Forgot Password
-- Reset Password
 - Email Verification (6-digit code)
 
 ### User Story
@@ -50,10 +48,9 @@ So that I can use SkillSwap.
 
 #### After Registration
 
-1. User registers and is automatically authenticated.
-2. A 6-digit verification code is sent to the user's email.
-3. User is redirected to the Email Verification page.
-4. Dashboard and other protected pages are locked until verification succeeds.
+1. User registers successfully. A 6-digit verification code is sent to their email.
+2. User verifies their email using the code.
+3. User can now log in with their credentials.
 
 #### Verification Code
 
@@ -72,10 +69,9 @@ So that I can use SkillSwap.
 
 #### Login Before Verification
 
-- Unverified users can log in.
-- After login, they are redirected to verification instead of the dashboard.
-- Only verification and logout actions are available until verified.
-- After successful verification, full access is restored.
+- Unverified users are blocked from logging in (403 Forbidden).
+- Verification must be completed before the first login.
+- This ensures email ownership and prevents account squatting.
 
 ---
 
@@ -461,11 +457,11 @@ Support:
 
 ## Authentication
 
-- [ ] Register
-- [ ] Login
-- [ ] Logout
-- [ ] Password Reset
-- [ ] Email Verification (6-digit code)
+- [x] Register
+- [x] Login
+- [x] Logout
+- [ ] Password Reset _(deferred)_
+- [x] Email Verification (6-digit code)
 
 ---
 

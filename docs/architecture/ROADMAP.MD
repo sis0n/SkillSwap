@@ -2,17 +2,16 @@
 
 > Version: 4.0.0
 > Project Stage: Minimum Viable Product (MVP)
+> Last Updated: 2026-07-25
 
 ---
 
 # Purpose
-
 This roadmap tracks backend, frontend, testing, and documentation progress for the SkillSwap MVP.
 
 ---
 
 # Project Documentation
-
 - PLANNING.md
 - FEATURES.md
 - DATABASE.md
@@ -26,7 +25,6 @@ Keep these documents synchronized throughout development.
 ---
 
 # Development Workflow
-
 1. Review documentation.
 2. Implement backend.
 3. Implement frontend.
@@ -37,41 +35,53 @@ Keep these documents synchronized throughout development.
 ---
 
 # Current Focus
-
 Current Phase: Phase 4 — User Profiles
-
 Current Status: Pending
 
 ---
 
-## Previous Phase
+# Project Progress
 
-Phase 3.75 — Role Architecture: Completed
+**Completed:**
+- Phase 1 — Project Foundation
+- Phase 2 — Database
+- Phase 3 — Authentication
+- Phase 3.5 — Social OAuth (Google)
+- Phase 3.75 — Role Architecture
+
+**Current:**
+- Phase 4 — User Profiles
+
+**Remaining:**
+- Phase 5 — Skills
+- Phase 6 — Marketplace
+- Phase 7 — Exchange Requests
+- Phase 8 — Messaging
+- Phase 9 — Learning Sessions
+- Phase 10 — Reviews
+- Phase 11 — Pre-Release QA
+- Phase 12 — Deployment
 
 ---
 
 # MVP Milestones
 
 ## Phase 1 — Project Foundation
-
 Status: Completed
 
 ### Backend
-
 - [x] Laravel setup
 - [x] Docker
 - [x] PostgreSQL
 - [x] Environment variables
-- [x] Authentication
+- [x] Authentication foundation
 
 ### Frontend
-
 - [x] React + TypeScript + Vite
 - [x] Routing
 - [x] API client
 
 ### Documentation
-
 - [x] PLANNING.md
 - [x] FEATURES.md
 - [x] DATABASE.md
@@ -83,11 +93,9 @@ Status: Completed
 ---
 
 ## Phase 2 — Database
-
 Status: Completed
 
 ### Backend
-
 - [x] All MVP tables
 - [x] Foreign keys
 - [x] Indexes
@@ -95,24 +103,20 @@ Status: Completed
 - [x] Seeders
 
 ### Frontend
-
 - [x] API types
 
 ### Documentation
-
 - [x] DATABASE.md
 - [x] API.md
 
 ---
 
 ## Phase 3 — Authentication
-
 Status: Completed
 
 Progress
-
-- Backend API (Bearer Token): Completed
-- Backend Sanctum Migration: Completed
+- Backend Authentication API (Sanctum SPA): Completed
+- Sanctum SPA Session Migration: Completed
 - Frontend Infrastructure: Completed
 - Frontend Authentication UI: Completed
 - Registration Cases (1-4): Completed
@@ -122,11 +126,42 @@ Progress
 - Testing: Completed (30 test cases, all passing)
 - Documentation: Completed
 
-### Backend
+### Notes
+Phase 3 intentionally excludes the following features:
+- Password Reset
+- Email Change Verification
+- Session Management
+- Authentication Audit Logging
 
+These features are planned for future phases and are not required for MVP completion.
+
+## Authentication Version
+
+**Current Version:** v1.0
+**Status:** Feature complete for MVP. Production-ready for current project scope.
+
+**Major Features Included:**
+- Laravel Sanctum SPA Authentication
+- Session-based Authentication
+- Google OAuth
+- 6-Digit Email Verification
+- Role Architecture
+- Rate Limiting
+
+**Current Test Suite:**
+- 55 automated tests
+- 167 assertions
+- Covers Authentication, Social OAuth, and Role Architecture
+
+**Planned Future Versions (not started):**
+- v1.1 — Password Reset, Email Change Verification
+- v1.2 — Session Management, Logout From All Devices
+- v2.0 — Multi-Factor Authentication, Advanced Security Features
+
+### Backend
 - [x] Register — handles 4 cases (new, verified, unverified+active, unverified+expired)
 - [x] Login — checks email verification before Auth::attempt()
-- [x] Login — rate limited to 5 attempts/min per email (throttle:login)
+- [x] Login — rate limited: 5 attempts/min per email + 20 attempts/min per IP
 - [x] Logout — session invalidation
 - [x] Email Verification (6-digit code with 10-min expiry, single-use, bcrypt-hashed)
 - [x] Resend code — 60s cooldown, invalidates old codes
@@ -135,7 +170,6 @@ Progress
 - [x] Username uniqueness enforced via controller logic
 
 ### Backend — Sanctum SPA Migration (Completed)
-
 - [x] Database sessions table and migration
 - [x] Sanctum stateful domains config
 - [x] CORS supports_credentials config
@@ -144,7 +178,6 @@ Progress
 - [x] Sanctum middleware in api group
 
 ### Frontend — Infrastructure
-
 - [x] Axios client (withCredentials, CSRF interceptors, 419 retry, 401 handler)
 - [x] Zustand auth store (session-based, no token, no localStorage)
 - [x] TanStack Query client and provider
@@ -157,7 +190,6 @@ Progress
 - [x] Route guards (session-based, minimal compatibility)
 
 ### Frontend — Completed
-
 - [x] Login page form logic (React Hook Form + Zod + API integration)
 - [x] Register page form logic (React Hook Form + Zod + API integration)
 - [x] Form validation and error display
@@ -165,7 +197,6 @@ Progress
 - [x] Global Error Boundary component
 
 ### Frontend — Email Verification (Completed)
-
 - [x] Backend: Send 6-digit code endpoint (no auth required, accepts email body)
 - [x] Backend: Verify 6-digit code endpoint (no auth required, accepts email + code)
 - [x] Backend: Code expiration logic (10-min expiry, bcrypt-hashed, single-use)
@@ -180,7 +211,6 @@ Progress
 - [x] Frontend: Block dashboard/protected routes for unverified users (login rejects unverified)
 
 ### Testing
-
 - [x] Register — new email (Case 1)
 - [x] Register — verified email (Case 2)
 - [x] Register — unverified + valid code (Case 3)
@@ -208,7 +238,6 @@ Progress
 - [x] 30 total test cases, all passing
 
 ### Documentation
-
 - [x] API.md — Updated with registration cases, verification, login behavior
 - [x] UI.md — Updated with verification flow
 - [x] AUTH_PLAN.md — Architecture plan with updated checklist
@@ -217,11 +246,9 @@ Progress
 ---
 
 ## Phase 3.5 — Social OAuth (Google)
-
 Status: Completed
 
 ### Backend
-
 - [x] Install Laravel Socialite
 - [x] Create `social_accounts` table (provider-agnostic: provider, provider_id, provider_email, avatar_url)
 - [x] SocialAccount model with HasFactory
@@ -238,7 +265,6 @@ Status: Completed
 - [x] Existing provider_id cannot be overwritten
 
 ### Frontend
-
 - [x] GoogleLoginButton component (standard Google branding)
 - [x] OAuthCallbackPage (session-based auth, no query param dependency)
 - [x] Added Google button to LoginPage
@@ -246,12 +272,10 @@ Status: Completed
 - [x] `/auth/callback` route in App.tsx
 
 ### Testing
-
 - [x] 23 SocialAuthTest cases covering all 3 cases, error handling, and security scenarios
 - [x] All 55 tests pass (30 auth + 23 social + 2 infrastructure)
 
 ### Documentation
-
 - [x] DATABASE.MD — social_accounts table, updated users notes
 - [x] API.MD — OAuth endpoints and flow
 - [x] AUTH_PLAN.MD — new section with architecture, flow, security
@@ -260,7 +284,6 @@ Status: Completed
 ---
 
 ## Phase 3.75 — Role Architecture
-
 Status: Completed
 
 ### Backend
@@ -294,24 +317,23 @@ Status: Completed
 ---
 
 ## Phase 4 — User Profiles
-
 Status: Pending
 
-### Backend
+### Goal
+Allow users to create, edit, and manage their public profile.
 
+### Backend
 - [ ] Profile API
 - [ ] Avatar upload
 - [ ] Availability
 
 ### Frontend
-
 - [ ] Profile page
 - [ ] Edit profile
 - [ ] Responsive UI
 - [ ] Dark mode
 
 ### Documentation
-
 - [ ] API.md
 - [ ] UI.md
 - [ ] DESIGN_SYSTEM.md
@@ -320,55 +342,167 @@ Status: Pending
 ---
 
 ## Phase 5 — Skills
-
 Status: Pending
 
-Backend
+### Goal
+Allow users to add, remove, and browse skills they can teach or want to learn.
 
+### Backend
 - [ ] Skill management
 
-Frontend
-
+### Frontend
 - [ ] Skills pages
 - [ ] Skill forms
 
-Documentation
-
+### Documentation
 - [ ] API.md
 - [ ] UI.md
 
 ---
 
 ## Phase 6 — Marketplace
-
 Status: Pending
+
+### Goal
+Enable users to discover and filter potential learning partners.
+
+### Backend
+- [ ] Marketplace API
+
+### Frontend
+- [ ] Browse page
+- [ ] Search and filter
+
+### Documentation
+- [ ] API.md
+- [ ] UI.md
+
+---
 
 ## Phase 7 — Exchange Requests
-
 Status: Pending
+
+### Goal
+Let users send, accept, and reject skill exchange match requests.
+
+### Backend
+- [ ] Exchange request API
+
+### Frontend
+- [ ] Request form
+- [ ] Inbox and response UI
+
+### Documentation
+- [ ] API.md
+- [ ] UI.md
+
+---
 
 ## Phase 8 — Messaging
-
 Status: Pending
+
+### Goal
+Provide matched users with private one-to-one messaging.
+
+### Backend
+- [ ] Conversation and message API
+
+### Frontend
+- [ ] Conversation list
+- [ ] Message thread view
+
+### Documentation
+- [ ] API.md
+- [ ] UI.md
+
+---
 
 ## Phase 9 — Learning Sessions
-
 Status: Pending
+
+### Goal
+Allow matched users to schedule and manage learning sessions.
+
+### Backend
+- [ ] Session API
+
+### Frontend
+- [ ] Session page
+- [ ] Calendar or date picker
+
+### Documentation
+- [ ] API.md
+- [ ] UI.md
+
+---
 
 ## Phase 10 — Reviews
-
 Status: Pending
 
-## Phase 11 — Testing
+### Goal
+Let users rate and review completed learning sessions.
 
+### Backend
+- [ ] Reviews API
+
+### Frontend
+- [ ] Review form
+- [ ] Rating display
+
+### Documentation
+- [ ] API.md
+- [ ] UI.md
+
+---
+
+## Phase 11 — Pre-Release QA
 Status: Pending
+
+### Goal
+Perform end-to-end validation and quality assurance before launch.
+
+### Backend
+- [ ] Integration tests
+- [ ] Edge case coverage
+
+### Frontend
+- [ ] E2E tests
+- [ ] Accessibility audit
+
+### Documentation
+- [ ] Test plan
+- [ ] QA checklist
+
+---
 
 ## Phase 12 — Deployment
-
 Status: Pending
+
+### Goal
+Deploy the MVP to production environments.
+
+### Backend
+- [ ] Production environment setup
+
+### Frontend
+- [ ] Production build and domain
+
+### Documentation
+- [ ] Deployment runbook
+
+---
+
+# Roadmap Maintenance
+Update this roadmap whenever:
+- A phase starts or finishes.
+- A major feature is added, removed, or deferred.
+- Project priorities change.
+- Documentation structure changes.
+- Version numbers are updated.
+
+The roadmap should always reflect the current state of development.
 
 ---
 
 # Notes
-
 A phase is complete only after backend, frontend, testing, and documentation tasks are complete.

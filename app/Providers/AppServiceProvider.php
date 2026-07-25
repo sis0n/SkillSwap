@@ -21,8 +21,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Dual rate limiting: email limit prevents distributed brute-force on a single
+        // account; IP limit prevents rapid-fire spray attacks across many accounts.
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(5)->by($request->input('email') ?: $request->ip());
+            return [
+                Limit::perMinute(5)->by($request->input('email') ?: $request->ip()),
+                Limit::perMinute(20)->by($request->ip()),
+            ];
         });
 
         JsonResource::withoutWrapping();

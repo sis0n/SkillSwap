@@ -190,6 +190,9 @@ class SocialAuthService
         return $username;
     }
 
+    // OAuth users receive a random hashed password instead of a nullable column.
+    // This keeps the password column NOT NULL (no schema exceptions) and allows
+    // users to set a real password later in Settings without a separate migration.
     private function generatePassword(): string
     {
         return Hash::make(Str::random(64));

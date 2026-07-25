@@ -7,33 +7,46 @@
 
 ---
 
+## Authentication Principles
+
+- Session-based authentication uses Laravel Sanctum.
+- Email ownership must be verified before login.
+- Google OAuth automatically trusts verified provider emails.
+- Roles are assigned only by the backend.
+- Authentication and authorization are separate concerns.
+- Password reset is intentionally outside the MVP scope.
+- Security decisions favor simplicity and maintainability for the MVP.
+
+---
+
 # Table of Contents
 
-1. [Authentication Architecture Overview](#1-authentication-architecture-overview)
-2. [Sanctum Authentication Flow](#2-sanctum-authentication-flow)
-3. [Authentication Lifecycle](#3-authentication-lifecycle)
-4. [Session Driver: Database Sessions](#4-session-driver-database-sessions)
-5. [CSRF Protection](#5-csrf-protection)
-6. [Deployment Environments](#6-deployment-environments)
-    - [6.1 Local Development](#61-local-development)
-    - [6.2 Preview / Temporary Deployment](#62-preview--temporary-deployment)
-    - [6.3 Production Deployment (Recommended)](#63-production-deployment-recommended)
-    - [6.4 Session Cookie Configuration (Shared)](#64-session-cookie-configuration-shared-across-environments)
-7. [Axios CSRF Behavior — Environment-by-Environment](#7-axios-csrf-behavior--environment-by-environment)
-8. [Required Backend Changes](#8-required-backend-changes)
-9. [Required Frontend Changes](#9-required-frontend-changes)
-10. [State Management Architecture](#10-state-management-architecture)
-11. [Updated Folder Structure](#11-updated-folder-structure)
-12. [Dependencies to Install](#12-dependencies-to-install)
-13. [Files to Create](#13-files-to-create)
-14. [Files to Modify](#14-files-to-modify)
-15. [File Migration Strategy](#15-file-migration-strategy)
-16. [Recommended Implementation Order](#16-recommended-implementation-order)
-17. [Deployment Configuration](#17-deployment-configuration)
-18. [Complete Checklist](#18-complete-checklist)
-19. [Role Architecture](#19-role-architecture)
-20. [Deployment Roadmap](#20-deployment-roadmap)
-21. [Future Session Security Capabilities](#21-future-session-security-capabilities)
+1. [Authentication Principles](#authentication-principles)
+2. [Authentication Architecture Overview](#1-authentication-architecture-overview)
+3. [Sanctum Authentication Flow](#2-sanctum-authentication-flow)
+4. [Authentication Lifecycle](#3-authentication-lifecycle)
+5. [Session Driver: Database Sessions](#4-session-driver-database-sessions)
+6. [CSRF Protection](#5-csrf-protection)
+7. [Deployment Environments](#6-deployment-environments)
+    - [7.1 Local Development](#61-local-development)
+    - [7.2 Preview / Temporary Deployment](#62-preview--temporary-deployment)
+    - [7.3 Production Deployment (Recommended)](#63-production-deployment-recommended)
+    - [7.4 Session Cookie Configuration (Shared)](#64-session-cookie-configuration-shared-across-environments)
+8. [Axios CSRF Behavior — Environment-by-Environment](#7-axios-csrf-behavior--environment-by-environment)
+9. [Required Backend Changes](#8-required-backend-changes)
+10. [Required Frontend Changes](#9-required-frontend-changes)
+11. [State Management Architecture](#10-state-management-architecture)
+12. [Updated Folder Structure](#11-updated-folder-structure)
+13. [Dependencies to Install](#12-dependencies-to-install)
+14. [Files to Create](#13-files-to-create)
+15. [Files to Modify](#14-files-to-modify)
+16. [File Migration Strategy](#15-file-migration-strategy)
+17. [Recommended Implementation Order](#16-recommended-implementation-order)
+18. [Deployment Configuration](#17-deployment-configuration)
+19. [Complete Checklist](#18-complete-checklist)
+20. [Role Architecture](#19-role-architecture)
+21. [Deployment Roadmap](#20-deployment-roadmap)
+22. [Future Session Security Capabilities](#21-future-session-security-capabilities)
 
 ---
 
@@ -1264,8 +1277,38 @@ VITE_API_URL=https://skillswap-api.onrender.com
 - [x] Logout → session destroyed
 - [x] Unauthenticated access to protected routes → 401 error
 - [x] Me endpoint returns user data without password
-- [x] Login rate limited to 5 attempts per minute per email (throttle:login)
+- [x] Login rate limited: 5 attempts/min per email + 20 attempts/min per IP (throttle:login)
 - [x] 30 test cases pass covering all scenarios
+
+---
+
+# Out of Scope for Phase 3 (Intentionally Deferred)
+
+The following authentication features are intentionally excluded from Phase 3. They are documented here so future contributors understand why they were deferred.
+
+## Password Reset
+
+**Deferred to:** Phase 3.8 or pre-launch
+
+**Reasoning:** Password reset is self-contained — it requires a Forgot Password page, Reset Password page, email notifications, and token expiry validation. Google OAuth provides a fallback for users who forget their password. The `password_reset_tokens` table already exists (created in the users migration), so no schema changes are needed when implemented.
+
+## Authentication Audit Logging
+
+**Deferred to:** Phase 11 (Security) or Admin Module
+
+**Reasoning:** No admin dashboard exists to consume audit logs. Implementing logging now would write to an unread database table, adding write amplification with zero user-facing benefit. Best implemented alongside admin/reporting features.
+
+## Session Management
+
+**Deferred to:** Phase 4+ (User Settings)
+
+**Reasoning:** Active sessions, logout from all devices, and device management belong in User Settings or Profile. The database session infrastructure (`sessions` table, `SESSION_DRIVER=database`) is already in place. Only API endpoints and frontend UI are needed.
+
+## Email Change Verification
+
+**Deferred to:** Phase 4 (User Profiles)
+
+**Reasoning:** Email change is a profile management feature, not an authentication feature. The existing 6-digit verification code infrastructure will be reused. Suggested flow: user requests change → code sent to new email → verify → update.
 
 ---
 
