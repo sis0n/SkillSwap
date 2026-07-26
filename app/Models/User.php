@@ -10,7 +10,9 @@ use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -108,5 +110,17 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function receivedReviews(): HasMany
     {
         return $this->hasMany(Review::class, 'reviewee_id');
+    }
+
+    public function languages(): BelongsToMany
+    {
+        return $this->belongsToMany(Language::class, 'user_languages')
+            ->withPivot('proficiency')
+            ->withTimestamps();
+    }
+
+    public function portfolioLinks(): HasMany
+    {
+        return $this->hasMany(PortfolioLink::class);
     }
 }

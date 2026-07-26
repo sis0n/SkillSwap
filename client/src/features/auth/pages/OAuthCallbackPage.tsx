@@ -9,6 +9,7 @@ export default function OAuthCallbackPage() {
   const navigate = useNavigate()
   const setUser = useAuthStore((state) => state.setUser)
   const isInitialized = useAuthStore((state) => state.isInitialized)
+  const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
     async function finalizeAuth() {
@@ -37,12 +38,12 @@ export default function OAuthCallbackPage() {
       }
     }
 
-    if (!isInitialized) {
-      finalizeAuth()
-    } else {
+    if (user) {
       navigate("/dashboard", { replace: true })
+    } else {
+      finalizeAuth()
     }
-  }, [navigate, setUser, isInitialized])
+  }, [navigate, setUser, user])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">

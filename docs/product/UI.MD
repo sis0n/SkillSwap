@@ -87,8 +87,8 @@ Components:
 Pages:
 
 - Dashboard
-- My Profile
-- Edit Profile
+- Profile (/profile)
+- Public Profile (/users/:username)
 - My Skills
 - Marketplace
 - Exchange Requests
@@ -126,7 +126,7 @@ Visible only to authenticated users with unverified email addresses.
 - Exchange Requests
 - Messages
 - Sessions
-- Profile
+- Profile (/profile)
 - Settings
 - Logout
 
@@ -305,47 +305,194 @@ GET /api/v1/marketplace
 
 ---
 
+## Profile
+
+### Purpose
+
+View your own profile with all your information, including private fields like email.
+
+### Route
+
+`/profile` (authenticated)
+
+### Components
+
+- Avatar (with upload/remove actions)
+- Profile Header (name, username, headline, joined date)
+- Profile Details (bio, location, website, experience level)
+- Languages (badges with proficiency labels)
+- Timezone
+- Availability Schedule
+- Edit Profile Button
+- Loading Skeleton
+- Error State with Retry
+- Empty State Placeholders
+
+### User Actions
+
+- Click Edit Profile button → navigate to `/profile/edit`
+- Click avatar → change/remove avatar (inline)
+
+### States
+
+- **Loading**: Skeleton placeholders for avatar, name, bio, and availability while fetching
+- **Loaded**: Full profile display with all available fields
+- **Error**: Error message with retry button if profile fetch fails
+- **Empty Bio**: Shows "No bio yet" placeholder
+- **No Headline**: Section is hidden
+- **No Availability**: Shows "No availability set" message
+
+### APIs
+
+GET /api/v1/me/profile
+
+PUT /api/v1/me/profile (via Edit Profile)
+
+POST /api/v1/me/avatar (via Avatar Uploader)
+
+DELETE /api/v1/me/avatar (via Avatar Uploader)
+
+GET /api/v1/me/availability
+
+PUT /api/v1/me/availability (via Edit Profile)
+
+### Responsive Layout
+
+- Desktop: Two-column layout — left column has avatar + details, right column has availability
+- Mobile: Single-column stacked layout
+
+---
+
+## Edit Profile (Modal)
+
+### Purpose
+
+Edit your personal profile information, languages, timezone, portfolio links, and availability. Implemented as a modal overlay on the Profile page.
+
+### Trigger
+
+- Button on Profile page → opens `EditProfileModal`
+- Modal closes on Save (success), Cancel, ESC key, or click outside
+
+### Components
+
+- Dialog (reusable centered modal with overlay, ESC/click-outside to close, scroll lock)
+- Avatar Uploader (preview, upload button, remove button)
+- Profile Form (headline, bio, location, experience_level)
+- Language Autocomplete (searchable, debounced, keyboard navigation, multi-select with removable badges, editable proficiency via inline dropdown)
+- Timezone Selector (auto-detect via browser Intl API, manual override via searchable IANA list)
+- PortfolioLinkSection (add/edit/delete/reorder links with platform-colored badges, inline add/edit forms)
+- Availability Manager (list of slots with add/remove)
+- Save Button
+- Cancel Button (closes modal without saving)
+- Form Validation Errors
+
+### Form Fields
+
+| Field            | Type       | Component            | Notes                              |
+| ---------------- | ---------- | -------------------- | ---------------------------------- |
+| headline         | string     | Input                | Max 100 chars, placeholder: "e.g. Full-stack developer" |
+| bio              | textarea   | Textarea             | Max 500 chars |
+| location         | string     | Input                | Max 100 chars, placeholder: "City, Country" |
+| experience_level | select     | CustomSelect         | Options: beginner, intermediate, advanced |
+| timezone         | string     | TimezoneSelect       | Auto-detected via Intl API, searchable IANA list |
+| languages        | array      | LanguageAutocomplete  | Searchable autocomplete + proficiency badge dropdown |
+| portfolio_links  | array      | PortfolioLinkSection  | Platform select + URL input, inline add/edit |
+
+### Form Validation
+
+- All fields are optional (nullable)
+- Bio: max 500 characters
+- Headline: max 100 characters
+- Location: max 100 characters
+- Timezone: valid IANA identifier (max 50 characters)
+- Languages: each entry must have a valid language code and proficiency (native, fluent, intermediate, beginner)
+- Portfolio links: each entry must have a valid platform and URL
+
+### User Actions
+
+- Save → PUT /api/v1/me/profile (includes profile fields, languages, timezone, portfolio_links) → modal closes → profile refetched
+- Cancel → close modal (no changes saved)
+- Upload Avatar → POST /api/v1/me/avatar
+- Remove Avatar → DELETE /api/v1/me/avatar (with confirmation dialog)
+- Add Portfolio Link → inline form with platform select + URL input
+- Add Availability Slot → inline form with day/time pickers
+
+### States
+
+- **Saving**: Save button shows spinner, form disabled
+- **Validation Error**: Field-level error messages below inputs
+- **Save Error**: Error message below buttons
+- **Avatar Uploading**: Progress indicator on uploader
+- **Avatar Upload Error**: Error message on uploader
+
+### Responsive Layout
+
+- Desktop: Centered dialog, max-width ~640px
+- Mobile: Full-width dialog with appropriate padding
+
+---
+
 ## Public Profile
 
 ### Purpose
 
-Display another user's public information.
+Display another user's public information. Used when browsing the marketplace or viewing another user.
+
+### Route
+
+`/users/:username` (public, no auth required)
 
 ### Components
 
-- Avatar
-- Bio
-- Teaching Skills
-- Learning Skills
-- Reviews
-- Exchange Button
+- Avatar (initials-based default if none)
+- Profile Header (name, username, joined date)
+- Profile Details (headline, bio, location, experience level, timezone)
+- Languages (badges with proficiency labels)
+- Portfolio Links (platform name + clickable URL, sorted by display_order)
+- Availability Schedule
+- Exchange Button (placeholder/link to Phase 7)
+- Loading Skeleton
+- 404 State (user not found)
+
+### States
+
+- **Loading**: Skeleton while fetching
+- **Loaded**: Full public profile with user information
+- **Not Found**: "User not found" message with link back to marketplace
+- **No Bio**: Section hidden or shows "No bio yet"
+- **No Availability**: Section hidden
+
+### Visibility Rules
+
+| Field           | Visible? |
+| --------------- | -------- |
+| first_name      | Yes      |
+| middle_name     | Yes      |
+| last_name       | Yes      |
+| suffix          | Yes      |
+| username        | Yes      |
+| headline        | Yes      |
+| bio             | Yes      |
+| avatar          | Yes      |
+| location        | Yes      |
+| portfolio_links | Yes      |
+| experience_level| Yes      |
+| languages       | Yes      |
+| timezone        | Yes      |
+| availability    | Yes      |
+| joined_date     | Yes      |
+| email           | **No**   |
 
 ### APIs
 
 GET /api/v1/users/{username}
 
-GET /api/v1/users/{username}/reviews
+GET /api/v1/users/{username}/reviews (future)
 
----
+### Responsive Layout
 
-## My Profile
-
-### Purpose
-
-Manage personal information.
-
-### Components
-
-- Avatar
-- Personal Information
-- Availability
-- Bio
-
-### APIs
-
-GET /api/v1/me
-
-PUT /api/v1/me
+Same as Profile page — two columns on desktop, single column on mobile
 
 ---
 
@@ -507,6 +654,7 @@ Manage account preferences.
 - Modal
 - Card
 - Avatar
+- AvatarUploader (upload, preview, remove, progress indicator)
 - Badge
 - Navbar
 - Sidebar
@@ -517,7 +665,12 @@ Manage account preferences.
 - Session Card
 - Rating Stars
 - Loading Spinner
+- Loading Skeleton (shimmer placeholder for content loading)
 - Empty State
+- Toast Notification
+- Confirmation Dialog
+- AvailabilityManager (add/remove slots, day-of-week selector, time pickers)
+- PortfolioLinkSection (add/edit/delete/reorder portfolio links with platform-colored badges, inline forms)
 - Verification Code Input (6 individual digit slots + auto-advance)
 
 ---

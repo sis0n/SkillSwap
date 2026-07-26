@@ -22,6 +22,9 @@ export default defineConfig({
       "/sanctum": {
         target: "http://localhost:8080",
       },
+      "/storage": {
+        target: "http://localhost:8080",
+      },
     },
   },
 })

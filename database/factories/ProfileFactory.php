@@ -18,8 +18,11 @@ class ProfileFactory extends Factory
         return [
             'bio' => fake()->paragraph(),
             'avatar' => null,
+            'headline' => fake()->jobTitle(),
             'location' => fake()->city(),
+            'website' => fake()->url(),
             'experience_level' => fake()->randomElement(['beginner', 'intermediate', 'advanced']),
+            'timezone' => fake()->randomElement(timezone_identifiers_list()),
         ];
     }
 }

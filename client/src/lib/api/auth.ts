@@ -1,5 +1,5 @@
 import api from "@/lib/axios"
-import type { ApiResponse } from "@/lib/api/types"
+import type { ApiResponse, Profile } from "@/lib/api/types"
 
 export interface RegisterData {
   first_name: string
@@ -28,6 +28,7 @@ export interface User {
   email_verified_at: string | null
   created_at: string
   updated_at: string
+  profile?: Profile | null
 }
 
 export interface AuthData {

@@ -7,6 +7,7 @@ namespace App\Services\Auth;
 use App\Models\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Services\Profile\ProfileService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -14,6 +15,10 @@ use Laravel\Socialite\AbstractUser as SocialiteUser;
 
 class SocialAuthService
 {
+    public function __construct(
+        private readonly ProfileService $profileService,
+    ) {}
+
     private const array PROVIDERS = ['google'];
 
     public function getAvailableProviders(): array
@@ -38,7 +43,7 @@ class SocialAuthService
             ->first();
 
         if ($existingSocialAccount) {
-            return $existingSocialAccount->user;
+            return $this->syncFromProvider($existingSocialAccount->user, $socialiteUser);
         }
 
         $existingUser = $email ? User::where('email', $email)->first() : null;
@@ -89,6 +94,11 @@ class SocialAuthService
             $this->createSocialAccount($user, $provider, $socialiteUser);
         });
 
+        $avatarUrl = $socialiteUser->getAvatar();
+        if ($avatarUrl) {
+            $this->profileService->uploadAvatarFromUrl($user, $avatarUrl);
+        }
+
         return $user;
     }
 
@@ -108,7 +118,7 @@ class SocialAuthService
             );
         }
 
-        return DB::transaction(function () use ($provider, $socialiteUser) {
+        $user = DB::transaction(function () use ($provider, $socialiteUser) {
             $user = User::create([
                 'role_id' => Role::findBySlug(Role::USER)->id,
                 'first_name' => $this->extractFirstName($socialiteUser),
@@ -122,10 +132,19 @@ class SocialAuthService
 
             $user->markEmailAsVerified();
 
+            $user->profile()->create(['user_id' => $user->id]);
+
             $this->createSocialAccount($user, $provider, $socialiteUser);
 
             return $user;
         });
+
+        $avatarUrl = $socialiteUser->getAvatar();
+        if ($avatarUrl) {
+            $this->profileService->uploadAvatarFromUrl($user, $avatarUrl);
+        }
+
+        return $user;
     }
 
     private function createSocialAccount(User $user, string $provider, SocialiteUser $socialiteUser): SocialAccount
@@ -136,6 +155,21 @@ class SocialAuthService
             'provider_email' => $socialiteUser->getEmail(),
             'avatar_url' => $socialiteUser->getAvatar(),
         ]);
+    }
+
+    private function syncFromProvider(User $user, SocialiteUser $socialiteUser): User
+    {
+        $user->update([
+            'first_name' => $this->extractFirstName($socialiteUser),
+            'last_name' => $this->extractLastName($socialiteUser),
+        ]);
+
+        $avatarUrl = $socialiteUser->getAvatar();
+        if ($avatarUrl) {
+            $this->profileService->uploadAvatarFromUrl($user, $avatarUrl, force: true);
+        }
+
+        return $user;
     }
 
     private function isEmailVerifiedByProvider(SocialiteUser $socialiteUser): bool

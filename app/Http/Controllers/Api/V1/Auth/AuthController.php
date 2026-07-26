@@ -105,7 +105,7 @@ class AuthController extends BaseController
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::withRole()->where('email', $request->email)->first();
+        $user = User::with(['role', 'profile'])->where('email', $request->email)->first();
 
         if (!$user) {
             return $this->error(
@@ -159,7 +159,7 @@ class AuthController extends BaseController
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load('role');
+        $user = $request->user()->load(['role', 'profile']);
 
         return $this->success(
             data: [

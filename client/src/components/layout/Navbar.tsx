@@ -32,9 +32,14 @@ export function Navbar() {
           </Button>
 
           {user ? (
-            <Button asChild>
-              <Link to="/dashboard">Dashboard</Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" asChild>
+                <Link to="/profile">Profile</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>

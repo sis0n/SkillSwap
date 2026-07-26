@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             SkillCategorySeeder::class,
+            LanguageSeeder::class,
         ]);
 
         $users = User::factory(10)->create();

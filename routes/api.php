@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthCheckController;
+use App\Http\Controllers\Api\V1\LanguageController;
+use App\Http\Controllers\Api\V1\Profile\PortfolioLinkController;
+use App\Http\Controllers\Api\V1\Profile\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::name('api.')
@@ -12,6 +15,9 @@ Route::name('api.')
 
         Route::get('health', HealthCheckController::class)
             ->name('health');
+
+        Route::get('languages', [LanguageController::class, 'index'])
+            ->name('languages.index');
 
         Route::prefix('auth')->group(function (): void {
 
@@ -44,5 +50,44 @@ Route::name('api.')
             Route::get('me', [AuthController::class, 'me'])
                 ->name('me');
 
+            Route::prefix('me')->group(function (): void {
+
+                Route::get('profile', [ProfileController::class, 'show'])
+                    ->name('me.profile.show');
+
+                Route::put('profile', [ProfileController::class, 'update'])
+                    ->name('me.profile.update');
+
+                Route::post('avatar', [ProfileController::class, 'uploadAvatar'])
+                    ->name('me.avatar.upload');
+
+                Route::delete('avatar', [ProfileController::class, 'deleteAvatar'])
+                    ->name('me.avatar.delete');
+
+                Route::get('availability', [ProfileController::class, 'getAvailability'])
+                    ->name('me.availability.show');
+
+                Route::put('availability', [ProfileController::class, 'updateAvailability'])
+                    ->name('me.availability.update');
+
+                Route::get('portfolio-links', [PortfolioLinkController::class, 'index'])
+                    ->name('me.portfolio-links.index');
+
+                Route::post('portfolio-links', [PortfolioLinkController::class, 'store'])
+                    ->name('me.portfolio-links.store');
+
+                Route::put('portfolio-links/reorder', [PortfolioLinkController::class, 'reorder'])
+                    ->name('me.portfolio-links.reorder');
+
+                Route::put('portfolio-links/{portfolioLink}', [PortfolioLinkController::class, 'update'])
+                    ->name('me.portfolio-links.update');
+
+                Route::delete('portfolio-links/{portfolioLink}', [PortfolioLinkController::class, 'destroy'])
+                    ->name('me.portfolio-links.destroy');
+
+            });
         });
+
+        Route::get('users/{username}', [ProfileController::class, 'showPublic'])
+            ->name('users.show');
     });
