@@ -63,6 +63,7 @@ export interface UserProfile {
   languages: UserLanguage[]
   portfolio_links: PortfolioLink[]
   availability: AvailabilitySlot[]
+  user_skills?: UserSkillsGrouped
 }
 
 export interface LanguageInput {
@@ -106,4 +107,45 @@ export interface AvailabilityInput {
   day_of_week: number
   start_time: string
   end_time: string
+}
+
+export interface SkillCategory {
+  id: number
+  name: string
+  slug: string
+  icon: string | null
+  sort_order: number
+}
+
+export interface SkillRef {
+  id: number
+  category_id: number
+  name: string
+  slug: string
+  sort_order: number
+  category?: {
+    id: number
+    name: string
+    slug: string
+  }
+}
+
+export interface UserSkill {
+  id: number
+  skill_id: number
+  skill: SkillRef
+  type: "teaching" | "learning"
+  title: string | null
+  description: string | null
+  experience_level: "beginner" | "intermediate" | "advanced" | "expert"
+  years_of_experience: number | null
+  teaching_style: string | null
+  featured: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UserSkillsGrouped {
+  teaching: UserSkill[]
+  learning: UserSkill[]
 }

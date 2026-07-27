@@ -1,6 +1,6 @@
 # SkillSwap Roadmap
 
-> Version: 4.5.0
+> Version: 5.0.0
 > Project Stage: Minimum Viable Product (MVP)
 > Last Updated: 2026-07-26
 
@@ -35,8 +35,8 @@ Keep these documents synchronized throughout development.
 ---
 
 # Current Focus
-Current Phase: Phase 4.6 — Portfolio Links
-Current Status: Completed
+Current Phase: Phase 6 — Marketplace
+Current Status: Pending
 
 ---
 
@@ -49,16 +49,15 @@ Current Status: Completed
 - Phase 3.5 — Social OAuth (Google)
 - Phase 3.75 — Role Architecture
 - Phase 4 — User Profiles
-
-**Completed:**
 - Phase 4.5 — Languages & Timezone
 - Phase 4.6 — Portfolio Links
+- Phase 5 — Skills
+- Phase 5.1 — Skill Architecture Refinement
 
 **Current:**
-- (none)
+- Phase 6 — Marketplace (Pending)
 
 **Remaining:**
-- Phase 5 — Skills
 - Phase 6 — Marketplace
 - Phase 7 — Exchange Requests
 - Phase 8 — Messaging
@@ -777,21 +776,270 @@ Portfolio links are normalized across 11 platforms with platform-aware URL regex
 ---
 
 ## Phase 5 — Skills
-Status: Pending
+Status: Completed (Backend + Frontend)
 
 ### Goal
-Allow users to add, remove, and browse skills they can teach or want to learn.
+Allow users to add, remove, browse, and feature skills they can teach or want to learn. Skills are the foundational data for Marketplace (Phase 6), Exchange Requests (Phase 7), and all subsequent phases.
+
+### Overview
+Phase 5 is organized into 7 architectural refinements plus 4 implementation improvements applied before full rollout.
+
+**Refinements (documented in FEATURES.MD, DATABASE.MD, API.MD, UI.MD):**
+1. **Duplicate Prevention** — Unique index on `(user_id, skill_id, type)` + app validation
+2. **Skill Limit** — Max 30 skills per user
+3. **Search & Filtering** — `?search=`, `?category_id=` for public skills endpoint
+4. **Consistent Ordering** — Featured first, teaching before learning, alphabetical
+5. **Years of Experience Validation** — Integer, nullable, 0–60
+6. **Featured Skills** — Boolean `featured`, max 3 per user, appear first on profiles
+7. **Empty States** — Type-specific messages, containers hidden when empty
+
+**Pre-Implementation Improvements:**
+1. **Active Exchange Request Guard** — Prevent deleting skills referenced by pending/accepted requests
+2. **Category Filtering on /me/skills** — `?category_id=` filter with validation
+3. **Explicit sort_order Seed Data** — Deterministic ordering for categories and skills
+4. **Partial Update Safety** — Featured and other optional fields preserved when omitted
+
+---
 
 ### Backend
-- [ ] Skill management
+
+#### Database — Migration (New)
+- [x] Add `featured` boolean column to `user_skills` table (default false)
+- [x] Add `sort_order` column to `skill_categories` table (unsigned smallint, default 0)
+- [x] Add `sort_order` column to `skills` table (unsigned smallint, default 0)
+- [x] Add unique composite index on `user_skills(user_id, skill_id, type)` — prevents duplicate skill entries
+- [x] Verify existing factories and seeders are compatible
+
+#### Models
+- [x] Update `SkillCategory` model — add `sort_order` to fillable, add `scopeOrdered()`
+- [x] Update `Skill` model — add `sort_order` to fillable, add `scopeSearch()`, `scopeByCategory()`
+- [x] Update `UserSkill` model — add `featured` to fillable, add `$casts` for `featured` (boolean)
+
+#### Controllers
+- [x] Create `SkillCategoryController` — `index()` returns all categories ordered by sort_order + name
+- [x] Create `SkillController` — `index()` with `?search=` and `?category_id=` query params support
+- [x] Create `UserSkillController` — `index`, `store`, `update`, `destroy` with owner checks
+
+#### Form Requests
+- [x] Create `StoreUserSkillRequest` — validate all fields, duplicate check (user_id + skill_id + type), skill limit (max 30), featured limit (max 3), experience_level enum, years_of_experience (0–60)
+- [x] Create `UpdateUserSkillRequest` — same validations, all fields optional, featured limit check excluding current record
+
+#### Resources
+- [x] Create `UserSkillResource` — return all fields with nested skill + category
+- [x] Design with `meta` wrapper for future extensibility (review_count, average_rating, completed_exchanges, endorsements — not implemented now)
+
+#### Routes
+- [x] `GET /api/v1/skill-categories` — public
+- [x] `GET /api/v1/skills` — public (with ?search=, ?category_id=)
+- [x] `GET /api/v1/me/skills` — authenticated
+- [x] `POST /api/v1/me/skills` — authenticated
+- [x] `PUT /api/v1/me/skills/{userSkill}` — authenticated, owner-only
+- [x] `DELETE /api/v1/me/skills/{userSkill}` — authenticated, owner-only
+
+#### Service
+- [x] Create `UserSkillService` — getUserSkills (with category filter, deterministic ordering), createUserSkill, updateUserSkill, deleteUserSkill (with active exchange request guard)
+
+#### Profile Integration
+- [x] Eager load `userSkills.skill.category` on ProfileController::show() and showPublic()
+- [x] Update `ProfileResource` — add `user_skills` grouped by type (teaching/learning)
+- [x] Update `PublicProfileResource` — add `user_skills` grouped by type (teaching/learning)
+- [x] Deterministic ordering on all skill responses: featured first, teaching before learning, alphabetical
 
 ### Frontend
-- [ ] Skills pages
-- [ ] Skill forms
+
+#### Types & API
+- [x] `SkillCategory` type (id, name, slug, icon, sort_order)
+- [x] `Skill` type (id, category_id, name, slug, sort_order, category?)
+- [x] `UserSkill` type (id, skill_id, skill, type, title, description, experience_level, years_of_experience, teaching_style, featured, timestamps)
+- [x] `CreateUserSkillData`, `UpdateUserSkillData` types
+- [x] API functions: `getSkillCategories()`, `getSkills(params?)`, `getMySkills()`, `addUserSkill()`, `updateUserSkill()`, `deleteUserSkill()`
+- [x] Update `UserProfile` and `PublicProfile` types to include `user_skills`
+
+#### Pages
+- [x] Create `/me/skills` (SkillsPage) — authenticated route, grouped skill list with add/edit/delete
+
+#### Components
+- [x] `SkillCard` — display card with type badge, experience level, featured badge, actions
+- [x] `AddSkillModal` — searchable skill selector + all fields
+- [x] `EditSkillModal` — pre-filled fields, skill locked
+- [x] Profile integration: skill display on ProfilePage and PublicProfilePage
+
+#### States
+- [x] Loading: Skeleton cards for SkillsPage and profile skill sections
+- [x] Empty (no skills at all): Centered empty state with CTA
+- [x] Empty (teaching only): "No teaching skills yet."
+- [x] Empty (learning only): "No learning goals yet."
+- [x] Empty sections not rendered (containers hidden)
+- [x] Error: Error message + retry button
+- [x] Featured: Star/pin badge, appears first
+
+### Testing — Backend (25 tests)
+
+- [x] Guest can list skill categories
+- [x] Authenticated user can list skill categories
+- [x] Guest can list skills
+- [x] Filter skills by category_id
+- [x] Search skills by name (?search=)
+- [x] Auth user can create a user skill
+- [x] Same skill same type duplicate rejected (uniqueness enforcement)
+- [x] Same skill different type allowed (teach + learn)
+- [x] Invalid type (not teaching/learning) rejected
+- [x] Skill limit (max 30) enforced
+- [x] Featured limit (max 3) enforced
+- [x] Years of experience validation (0–60, nullable)
+- [x] Auth user can list their own skills (ordered correctly)
+- [x] Auth user can update their own skill
+- [x] Auth user cannot update another user's skill
+- [x] Auth user can delete their own skill
+- [x] Auth user cannot delete another user's skill
+- [x] Delete skill with pending exchange request (422)
+- [x] Delete skill with accepted exchange request (422)
+- [x] Delete skill with completed exchange request (204 — allowed)
+- [x] Delete skill with cancelled exchange request (204 — allowed)
+- [x] Filter own skills by valid category_id
+- [x] Filter own skills by invalid category_id (422)
+- [x] Update preserves featured when not sent
+- [x] Update featured only
 
 ### Documentation
-- [ ] API.md
-- [ ] UI.md
+- [x] FEATURES.MD — Skill Management section expanded (fields, business rules, search, ordering, empty states)
+- [x] FEATURES.MD — MVP Skills checklist updated
+- [x] DATABASE.MD — skill_categories, skills, user_skills DETAILED specs (sort_order, featured, unique constraint, deprecation)
+- [x] API.MD — Skill Categories endpoint full doc
+- [x] API.MD — Skills endpoint full doc (search, filter, remove POST /skills)
+- [x] API.MD — My Skills endpoints full doc (CRUD, validation, business rules, ordering, category filter, active request guard)
+- [x] API.MD — Profile responses include user_skills
+- [x] UI.MD — My Skills section expanded (components, states, empty messages, ordering)
+- [x] UI.MD — Profile integration spec
+- [x] UI.MD — Reusable components added (SkillCard, SkillBadge, FeaturedBadge, AddSkillModal, EditSkillModal)
+- [x] ROADMAP.MD — This expanded checklist
+
+### Phase 5.1 — Skill Architecture Refinement
+
+**Goal:** Normalize skill names globally, add optional user title, add catalog metadata, clean up slug generation.
+
+**Changes:**
+1. **Name normalization** — Trim whitespace, collapse spaces, case-insensitive lookup
+2. **Unique catalog** — Skill names are globally unique; no duplicate records
+3. **Slug cleanup** — Removed `Str::random(4)` suffix; uses simple `Str::slug()` with collision fallback
+4. **User title** — `user_skills.title` nullable, max 100 characters; null displays skill name
+5. **Catalog metadata** — Added `is_system` (boolean) and `created_by` (nullable FK to users) on `skills` table
+6. **Search** — Case-insensitive search on `GET /skills` endpoint
+7. **Ordering** — `GET /me/skills` now orders by skill name (not title) to match spec
+
+### Phase 5 Summary
+**Backend Implementation:** Migration, 3 controllers, 2 form requests, 1 service, 1 resource, 6 routes, profile resource integration — all complete. Refinement: normalization, metadata, nullable title, slug cleanup. Phase 5.2: many-to-many categories via pivot table, `category_ids` array API.
+**Frontend Implementation:** SkillsPage, SkillCard, AddSkillModal, EditSkillModal, DeleteSkillDialog, SkillsSection, API layer, hooks, profile integration — all complete. Title is optional, null title shows skill name.
+**Tests:** 44 backend skill test cases (44/44 passing, 0 regressions), 158/159 total (1 pre-existing avatar storage failure unrelated, down from 4 due to migration fix). Tests pass after many-to-many refactor.
+**Build:** TypeScript compiles clean, Vite build succeeds (SkillsPage 19.6 KB gzip: 4.8 KB)
+**Key Decisions:**
+- Active exchange request guard prevents cascade-deleting exchange requests
+- Many-to-many categories via `skill_category_skill` pivot table with unique composite index
+- Deterministic ordering: featured first, teaching before learning, alphabetical by skill name; categories ordered by sort_order then name
+- Duplicate prevention at DB + app layer (unique pivot composite + distinct validation rule)
+- sort_order seed data: 0-indexed, category-indexed for skills
+- Partial update safety: omitted fields (including featured) unchanged
+- `portfolio_url` deprecated (use portfolio_links table)
+- Skill names are globally unique (case-insensitive normalized) — no two skills with the same name
+- `is_system` and `created_by` are internal metadata, not exposed in API
+- Custom skills are created via `skill_name` + `category_ids` (array); existing names are always reused
+- `syncWithoutDetaching()` used for atomic, idempotent category attachment
+- Skill selector uses debounced search + category filter with inline results dropdown
+- Category selector appears only when creating a brand-new skill (not for existing skills)
+- Modal forms use controlled local state (no React Hook Form — consistent with existing profile patterns)
+- Delete confirmations use inline dialog with backend error display for active exchange restriction
+
+### Phase 5.1 Checklist — Skill Architecture Refinement
+
+#### Backend
+- [x] Add `is_system` and `created_by` columns to skills table
+- [x] Make `user_skills.title` nullable, change max to 100
+- [x] Normalize skill names (trim, collapse spaces, case-insensitive lookup)
+- [x] Remove random slug suffix; use `Str::slug()` with collision fallback
+- [x] Update `SkillCategorySeeder` — seeded skills get `is_system = true`
+- [x] Update `UserSkillService` — normalization, metadata, ordering by skill name
+- [x] Update `StoreUserSkillRequest` — title nullable, max:100, normalized duplicate check
+- [x] Update `UpdateUserSkillRequest` — title max:100
+- [x] Update `SkillController` — case-insensitive search
+
+#### Frontend
+- [x] Title field optional (nullable) in AddSkillModal
+- [x] Show skill name when title is null in SkillCard and SkillsSection
+- [x] Update TypeScript types (title nullable)
+- [x] Update Zod schemas (title nullable, max 100)
+
+#### Testing (17 new tests)
+- [x] Skill name trimmed on creation
+- [x] Skill name collapses multiple spaces
+- [x] Case-insensitive lookup reuses existing skill
+- [x] Uppercase input reuses existing skill
+- [x] Case-insensitive skill search
+- [x] Whitespace-normalized duplicate rejected
+- [x] Case-insensitive duplicate rejected
+- [x] Custom skill sets `is_system = false`
+- [x] Custom skill sets `created_by` to user ID
+- [x] Title is optional on create
+- [x] Title can be null
+- [x] Title max 100 on create
+- [x] Title max 100 on update
+- [x] Title can be set to null on update
+- [x] Custom skill slug has no random suffix
+- [x] Existing skill ignores category_id
+- [x] No duplicate skill records for same normalized name
+
+#### Documentation
+- [x] DATABASE.MD — updated skills and user_skills tables
+- [x] FEATURES.MD — unique catalog, custom creation, optional title
+- [x] API.MD — updated validation rules, notes
+- [x] UI.MD — title optional, category selector behavior
+- [x] ROADMAP.MD — this checklist
+
+### Phase 5.2 — Many-to-Many Categories
+
+**Goal:** Allow skills to belong to multiple categories instead of a single category.
+
+**Changes:**
+1. **Pivot table** — Created `skill_category_skill` table with unique composite index `(skill_category_id, skill_id)`, cascade on delete
+2. **Data migration** — Preserved all existing skill-to-category relationships by inserting into pivot from the old `skills.category_id` column
+3. **Skills table** — Removed `category_id` foreign key column
+4. **Models** — `Skill::categories()` and `SkillCategory::skills()` both use `BelongsToMany` with `->orderBy('skill_categories.sort_order')->orderBy('skill_categories.name')` for deterministic ordering
+5. **Service** — `UserSkillService::createUserSkill()` uses `syncWithoutDetaching()` for atomic category attachment
+6. **Validation** — `StoreUserSkillRequest` accepts `category_ids` (array of integers, `distinct`, `exists:skill_categories,id`) when creating custom skills
+7. **Resources** — `UserSkillResource` and `SkillResource` return `categories` array instead of `category_id` + `category` object
+8. **Controllers** — Eager load `categories` on all skill queries to prevent N+1
+
+### Phase 5.2 Checklist — Many-to-Many Categories
+
+#### Backend
+- [x] Create `skill_category_skill` pivot migration with unique composite index + cascade deletes
+- [x] Data migration: copy existing `skills.category_id` values into pivot table
+- [x] Remove `category_id` from skills table
+- [x] Update `Skill` model: `categories()` BelongsToMany with ordering
+- [x] Update `SkillCategory` model: `skills()` BelongsToMany
+- [x] Update `UserSkillService`: `syncWithoutDetaching()` for atomic attachment
+- [x] Update `StoreUserSkillRequest`: `category_ids` array validation with `distinct`
+- [x] Update `UserSkillResource`: `categories` array instead of `category` object
+- [x] Update `SkillController`: eager load categories
+- [x] Update `SkillCategorySeeder`: multi-category examples, `syncWithoutDetaching()`
+
+#### Frontend
+- [ ] Update API types (categories array, no category_id)
+- [ ] Update AddSkillModal (category_ids array, multi-select optional)
+- [ ] Update SkillCard / SkillsSection for categories array
+- [ ] Update category filter to handle multi-category skills
+
+#### Testing
+- [x] Backend tests pass (SkillRefinementTest, SkillTest)
+- [x] Pivot integrity: duplicate (skill_id, category_id) rejected
+- [x] Duplicate `category_ids` in payload rejected (validation)
+- [x] Idempotent re-attachment: same skill+categories re-saved without error
+- [x] Deterministic category order in responses
+
+#### Documentation
+- [x] DATABASE.MD — added pivot table, removed category_id from skills
+- [x] FEATURES.MD — category_ids array, multi-category support
+- [x] API.MD — updated request/response examples, validation rules
+- [x] ROADMAP.MD — this section
 
 ---
 
@@ -799,18 +1047,140 @@ Allow users to add, remove, and browse skills they can teach or want to learn.
 Status: Pending
 
 ### Goal
-Enable users to discover and filter potential learning partners.
+Enable users to discover and filter potential learning partners based on skill matches.
+
+### Overview
+Marketplace provides a discoverable directory of eligible users — those with a verified email, a completed profile, and at least one Marketplace-eligible skill (an approved user_skill discoverable in Marketplace) — who want to teach or learn specific skills. It uses the existing skills data from Phase 5 as the foundation for matching. Users can search by skill name, filter by category or experience level, and browse potential partners' public profiles. The sidebar "Marketplace" link at `/marketplace` and "Back to Marketplace" links on public profiles are already in place — a route and page implementation is required.
+
+**Authentication:** Guest (no login required to browse). Users can discover potential partners without authenticating; sending exchange requests (Phase 7) requires login.
+
+---
 
 ### Backend
-- [ ] Marketplace API
+
+#### Controller & Routes
+- [ ] Create `MarketplaceController` (Api/V1)
+- [ ] Register `GET /api/v1/marketplace` route (rate-limited via `throttle:api` middleware)
+- [ ] Support query params: `?q=` (skill name), `?category_id=` (skill category), `?type=` (teaching/learning), `?experience_level=` (skill-specific), `?page=` (pagination), `?per_page=` (results per page, max 50)
+
+#### Form Request
+- [ ] Create `MarketplaceSearchRequest` — validate all query parameters consistently:
+  - `q`: string, nullable, max:255
+  - `category_id`: integer, nullable, exists:skill_categories,id
+  - `type`: string, nullable, in:teaching,learning
+  - `experience_level`: string, nullable, in:beginner,intermediate,advanced,expert
+  - `page`: integer, nullable, min:1
+  - `per_page`: integer, nullable, min:1, max:50
+
+#### Service
+- [ ] Create `MarketplaceService` — `searchUsers()` with composable filters:
+  - Eligibility filter: email verified (`users.email_verified_at IS NOT NULL`)
+  - Eligibility filter: profile completed (5+ contributing fields non-null — see FEATURES.MD Profile Completion)
+  - Eligibility filter: only `user_skills.status = 'approved'` — users without Marketplace-eligible skills are excluded
+  - Skill name search (case-insensitive, partial match on `skills.name`)
+  - Category filter (filter by `skill_categories.id`)
+  - Type filter (teaching/learning direction)
+  - Experience level filter (on `user_skills.experience_level`, skill-specific)
+  - Pagination (default 20 per page)
+
+#### Resource
+- [ ] Create `MarketplaceUserResource` (lightweight, listing-optimized — not a full public profile):
+  - User: id, name, username, avatar_url
+  - Profile: headline, bio, location
+  - Skills: array of matched { skill_name, type, experience_level } (limit to top 3 for preview). When no query or filter is provided, shows top 3 Marketplace-eligible skills.
+  - `matched_skills_count`: total number of the user's skills that remain after all active Marketplace search criteria and filters are applied. When no query or filter is provided, reflects the user's total Marketplace-eligible skill count.
+
+#### Query Design
+- [ ] Search across `users` joined with `user_skills`, `skills`, `skill_categories`, `profiles`
+- [ ] Eligibility: `users.email_verified_at IS NOT NULL` — unverified emails excluded
+- [ ] Eligibility: profile completed (5+ contributing fields non-null, following FEATURES.MD Profile Completion rules)
+- [ ] Eligibility: `user_skills.status = 'approved'` — only Marketplace-eligible skills qualify for discovery
+- [ ] Exclude the authenticated user from results (when authenticated)
+- [ ] Search ranking: exact match > partial match > matching skill count (after all active filters) > alphabetical by display name (deterministic, no new ranking fields required)
+- [ ] Browse mode default order: alphabetical by display name (no relevance ranking)
+- [ ] Eager load profile and skill relationships to prevent N+1
+- [ ] Distinct users (deduplicate when multiple skill matches)
+
+---
 
 ### Frontend
-- [ ] Browse page
-- [ ] Search and filter
+
+#### Types & API
+- [ ] Create `MarketplaceUser` type (id, name, username, avatar_url, headline, bio, location, matched_skills, matched_skills_count)
+- [ ] Create `MarketplaceSearchParams` type (q, category_id, type, experience_level, page, per_page)
+- [ ] Create `MarketplaceSearchResponse` type ({ users: MarketplaceUser[], meta: PaginationMeta })
+- [ ] Create `searchMarketplace(params)` API function in `lib/api/marketplace.ts`
+
+#### Hooks
+- [ ] Create `useMarketplaceSearch(params)` — TanStack Query hook with debounced search, keepPreviousData for pagination
+
+#### Page & Components
+- [ ] Create `MarketplacePage` at `/marketplace`:
+  - Search bar with debounced input
+  - Filter bar: Category dropdown, Type toggle (teaching/learning/all), Experience Level dropdown
+  - Results grid (responsive: 1 col mobile, 2 col tablet, 3 col desktop)
+  - Result card: avatar, name, headline, location, experience level badge, skill match chips (top 3 + "+N more")
+  - Click card → navigate to `/users/{username}`
+- [ ] Create `MarketplaceSearchCard` component (reusable result card)
+- [ ] Create `MarketplaceFilters` component (search + filter bar, collapsible on mobile)
+- [ ] Register route in `App.tsx` for `/marketplace` (unauthenticated route, public layout — guest browsing)
+
+#### States
+- [ ] Loading: Skeleton grid with 6 placeholder cards
+- [ ] Initial (no query, no filters): Shows all eligible users paginated — "Browse potential learning partners" heading
+- [ ] Empty (no results): "No matches found" with suggestion to broaden filters
+- [ ] Error: Error message with retry button
+- [ ] Active filter indicator: Show active filter count, clear all button
+
+#### Dark Mode Support
+- [ ] Marketplace page adapts to dark theme
+- [ ] Search bar, filter dropdowns, result cards all use CSS variables
+
+#### Responsive Layout
+- [ ] Search bar: full width on all breakpoints
+- [ ] Filters: horizontal bar on desktop, collapsible panel on mobile
+- [ ] Results: single column on mobile, 2 columns on tablet, 3 columns on desktop
+- [ ] Card density: compact on mobile, standard on desktop
+
+---
+
+### Testing — Backend
+
+- [ ] Search — empty query returns all eligible users (paginated)
+- [ ] Search — by skill name (partial match)
+- [ ] Search — by skill name (case-insensitive)
+- [ ] Search — by category_id
+- [ ] Search — by type (teaching/learning)
+- [ ] Search — by experience_level (skill-specific)
+- [ ] Search — combination of multiple filters
+- [ ] Search — excludes authenticated user from results (when authenticated)
+- [ ] Search — no results returns empty array
+- [ ] Search — pagination returns correct meta
+- [ ] Search — guest access returns 200 (no auth required)
+- [ ] Search — invalid category_id returns 422 (via Form Request)
+- [ ] Search — invalid type returns 422
+- [ ] Search — invalid experience_level returns 422
+- [ ] Search — response includes matched skills preview (max 3)
+- [ ] Search — response includes `matched_skills_count` (only skills remaining after all active filters, not unrelated skills)
+- [ ] Browse (no query, no filters) — `matched_skills` shows top 3 Marketplace-eligible skills, `matched_skills_count` reflects total Marketplace-eligible skill count
+- [ ] Ranking — exact match appears before partial match in results
+- [ ] Ranking — when partial matches exist, user with more matching skills (after all active filters applied) ranks higher than user with fewer
+- [ ] Ranking — matching skill count does not include unrelated Marketplace-eligible skills that fall outside active filters
+- [ ] Ranking — alphabetical by display name breaks ties when all other ranking factors are equal
+- [ ] Browse mode — results are in alphabetical order by display name (no relevance ranking applied)
+- [ ] Eligibility — users with unverified email are excluded from results
+- [ ] Eligibility — users with incomplete profile are excluded from results
+- [ ] Eligibility — users without Marketplace-eligible skills are excluded from results
+- [ ] Eligibility — user who meets all three requirements appears in results
+- [ ] Eligibility — user who later fails a requirement is excluded from subsequent requests
+
+---
 
 ### Documentation
-- [ ] API.md
-- [ ] UI.md
+- [ ] API.md — Marketplace browse endpoint (request, response, validation rules, auth, pagination)
+- [ ] UI.md — Marketplace page (components, states, user flow, responsive behavior, dark mode)
+- [ ] FEATURES.MD — Marketplace feature description (filters, states, user story)
+- [ ] ROADMAP.MD — This expanded checklist
 
 ---
 
@@ -941,3 +1311,8 @@ The roadmap should always reflect the current state of development.
 
 # Notes
 A phase is complete only after backend, frontend, testing, and documentation tasks are complete.
+
+## Scope Deferrals
+The following features were reviewed during Phase 6 planning and intentionally deferred to BACKLOG.MD:
+
+- **Location filter** — Free-text `profiles.location` matching is unreliable and does not support the core MVP goal of skill-based discovery. Location information is still visible on user profile pages. Deferred to Phase 6.4 (BACKLOG item #14). Timezone-based filtering using existing `profiles.timezone` is a simpler interim approach.

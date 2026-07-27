@@ -289,15 +289,51 @@ GET /api/v1/conversations
 
 ### Purpose
 
-Allow users to discover other learners.
+Allow users to discover potential learning partners by browsing, searching, and filtering by skill.
+
+### Route
+
+`/marketplace` (public, no auth required)
 
 ### Components
 
-- Search Bar
-- Category Filter
-- Experience Filter
-- User Cards
+- Search Bar (debounced input, searches by skill name)
+- Category Filter (dropdown, populates from `GET /api/v1/skill-categories`)
+- Type Filter (toggle or select: All, Teaching, Learning)
+- Experience Level Filter (dropdown: beginner, intermediate, advanced, expert)
+- User Card (avatar, name, headline, location, matched skill chips with type + experience level badges — shows only skills matching current search criteria and active filters)
 - Pagination
+
+### User Flow
+
+1. User navigates to `/marketplace`
+2. All eligible users are displayed in default ordering (paginated, alphabetical) — immediate browsing without searching. No relevance ranking is applied in browse mode.
+3. User can enter a skill name in the search bar to narrow results by skill match
+4. User can apply filters (category, type, experience level) independently without entering a search term, or combined with search
+5. Active filters are indicated with a count and a "Clear all" button
+6. Each user card shows up to 3 matched skill chips with "+N more" if additional matches exist
+7. Clicking a user card navigates to `/users/{username}` for the full public profile
+8. From the public profile, user can send an exchange request (Phase 7)
+
+### States
+
+- **Loading:** Skeleton grid with 6 placeholder cards (avatar circle + 3 text lines + badge placeholders)
+- **Initial (no query, no filters):** Shows all eligible users paginated with "Browse potential learning partners" heading. Users can start browsing immediately without entering any search term.
+- **Empty (no results):** "No matches found" message with suggestions to broaden filters or try a different search term.
+- **Error:** Error message with retry button if the API request fails.
+- **Active Filters:** Filter bar shows active filter count badge; "Clear all" button resets all filters to default.
+
+### Dark Mode Support
+
+- All Marketplace components (search bar, filter dropdowns, user cards, pagination) adapt to dark theme using CSS variables.
+- Follows the same pattern as existing profile and skills pages.
+
+### Responsive Layout
+
+- **Search bar:** Full width on all breakpoints
+- **Filters:** Horizontal bar on desktop; collapsible panel on mobile
+- **Results grid:** Single column on mobile, 2 columns on tablet, 3 columns on desktop
+- **User cards:** Compact on mobile (smaller avatar, condensed text), standard sizing on desktop
 
 ### APIs
 
@@ -500,14 +536,76 @@ Same as Profile page — two columns on desktop, single column on mobile
 
 ### Purpose
 
-Manage teaching and learning skills.
+Manage teaching and learning skills. Displays skills grouped by type (Teaching / Learning) with add, edit, delete, and feature actions.
+
+### Route
+
+`/me/skills` (authenticated)
 
 ### Components
 
-- Skill List
-- Add Skill
-- Edit Skill
-- Delete Skill
+- **SkillsPage** — main page with grouped skill list
+- **SkillCard** — single skill display card with type badge, experience level, description, years of experience, featured toggle, edit/delete actions
+- **AddSkillModal** — modal for adding a new skill (searchable skill selector, type toggle, experience level, title, description, years, teaching style, featured toggle)
+- **EditSkillModal** — modal for editing an existing skill (same fields, skill selection locked)
+- **FeaturedBadge** — small star/pin icon indicating a featured skill
+- **SkillBadge** — compact chip/badge for displaying skills on profile pages
+
+### States
+
+#### SkillsPage
+
+- **Loading:** Skeleton cards (matching Phase 4 skeleton pattern) grouped into two sections (Teaching / Learning)
+- **Empty (no skills at all):** Centered empty state with heading "No skills added yet" and description "Add your first skill to start finding exchange partners!" — CTA button opens AddSkillModal
+- **Empty (teaching only):** Teaching section shows "No teaching skills yet." — learning section renders normally
+- **Empty (learning only):** Learning section shows "No learning goals yet." — teaching section renders normally
+- **Both empty:** Only one empty state message shown; individual sections not rendered
+- **Error:** Error message with retry button — "Unable to load your skills."
+- **Loaded:** SkillCard grid grouped by Teaching / Learning with headings, counts, and Add Skill button
+
+#### SkillCard
+
+- **Default:** Displays skill name, type badge (Teaching/Learning), experience level badge, title, description (truncated), years of experience, featured badge
+- **Featured:** Shows featured star icon, appears first in list
+- **Actions:** Edit icon → opens EditSkillModal; Delete icon → confirmation dialog
+
+#### AddSkillModal / EditSkillModal
+
+- **Loading:** Skill selector shows skeleton while fetching skills list
+- **Search:** Debounced search input with dropdown results
+- **Empty search:** "No skills found." message + "Add '{name}' as a new skill" button (opens category selector for the new skill)
+- **Title field:** Optional. If empty, the skill name is shown on profile instead.
+- **Category selector:** Shown only when creating a custom skill (not shown when selecting an existing skill)
+- **Saving:** Save button shows spinner, form disabled
+- **Validation error:** Field-level error messages below inputs
+- **Error:** General error message with retry
+- **Featured limit exceeded:** Warning message when attempting to feature a 4th skill
+
+### Empty State Messages
+
+| Section          | Empty Message                          |
+| ---------------- | -------------------------------------- |
+| Teaching         | "No teaching skills yet."              |
+| Learning         | "No learning goals yet."               |
+| Both (no skills) | "No skills added yet." (single message) |
+
+Empty sections are **not rendered** — if a user has no teaching skills, the Teaching heading and container are hidden entirely.
+
+### Display Order (Deterministic)
+
+1. Featured skills first (star/pin icon)
+2. Teaching skills before learning skills
+3. Alphabetical by skill name within each group
+
+### Profile Integration
+
+Both Profile Page and Public Profile Page display skills grouped by type:
+
+- **Populated:** Compact SkillBadge chips in Teaching / Learning sections, featured skills shown first with star icon. If a skill has no custom title, the skill name is displayed instead.
+- **Empty (own profile):** "Add skills to appear here" — link to `/me/skills`
+- **Empty (public profile):** Section hidden entirely
+- **Loading:** Skeleton badges
+- **Error:** Section hidden (profile error shown at page level)
 
 ### APIs
 
@@ -518,6 +616,10 @@ POST /api/v1/me/skills
 PUT /api/v1/me/skills/{id}
 
 DELETE /api/v1/me/skills/{id}
+
+GET /api/v1/skill-categories (for skill selector)
+
+GET /api/v1/skills (for skill search)
 
 ---
 
@@ -661,7 +763,11 @@ Manage account preferences.
 - Pagination
 - Search Bar
 - User Card
-- Skill Card
+- SkillCard
+- SkillBadge
+- FeaturedBadge
+- AddSkillModal
+- EditSkillModal
 - Session Card
 - Rating Stars
 - Loading Spinner

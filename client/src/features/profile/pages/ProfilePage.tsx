@@ -1,5 +1,6 @@
 import { Calendar, ExternalLink, Globe2, MapPin, Pencil } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 
 import { AvailabilityManager } from "@/components/shared/AvailabilityManager"
 import { EditProfileModal } from "@/components/shared/EditProfileModal"
@@ -7,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SkillsSection } from "@/features/skills/components/SkillsSection"
 import { useMyProfile } from "@/features/profile/hooks/useProfile"
 import { useAuthStore } from "@/stores/authStore"
 import { cn } from "@/lib/utils"
@@ -196,6 +198,31 @@ export default function ProfilePage() {
                       ))}
                   </div>
                 </div>
+              )}
+
+              {user.user_skills && (
+                <>
+                  <SkillsSection
+                    skills={user.user_skills.teaching}
+                    type="teaching"
+                    emptyMessage="Add skills to appear here"
+                    isOwnProfile
+                  />
+                  <SkillsSection
+                    skills={user.user_skills.learning}
+                    type="learning"
+                    emptyMessage="Add skills to appear here"
+                    isOwnProfile
+                  />
+                  {(user.user_skills.teaching.length > 0 || user.user_skills.learning.length > 0) && (
+                    <Link
+                      to="/skills"
+                      className="mt-2 inline-block text-sm text-primary hover:underline"
+                    >
+                      Manage Skills &rarr;
+                    </Link>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

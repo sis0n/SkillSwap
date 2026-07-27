@@ -22,8 +22,17 @@ class UserSkill extends Model
         'experience_level',
         'years_of_experience',
         'teaching_style',
+        'featured',
         'portfolio_url',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'featured' => 'boolean',
+            'years_of_experience' => 'integer',
+        ];
+    }
 
     public function user(): BelongsTo
     {

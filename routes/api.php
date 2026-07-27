@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\V1\HealthCheckController;
 use App\Http\Controllers\Api\V1\LanguageController;
 use App\Http\Controllers\Api\V1\Profile\PortfolioLinkController;
 use App\Http\Controllers\Api\V1\Profile\ProfileController;
+use App\Http\Controllers\Api\V1\Skills\SkillCategoryController;
+use App\Http\Controllers\Api\V1\Skills\SkillController;
+use App\Http\Controllers\Api\V1\Skills\UserSkillController;
 use Illuminate\Support\Facades\Route;
 
 Route::name('api.')
@@ -18,6 +21,12 @@ Route::name('api.')
 
         Route::get('languages', [LanguageController::class, 'index'])
             ->name('languages.index');
+
+        Route::get('skill-categories', [SkillCategoryController::class, 'index'])
+            ->name('skill-categories.index');
+
+        Route::get('skills', [SkillController::class, 'index'])
+            ->name('skills.index');
 
         Route::prefix('auth')->group(function (): void {
 
@@ -84,6 +93,18 @@ Route::name('api.')
 
                 Route::delete('portfolio-links/{portfolioLink}', [PortfolioLinkController::class, 'destroy'])
                     ->name('me.portfolio-links.destroy');
+
+                Route::get('skills', [UserSkillController::class, 'index'])
+                    ->name('me.skills.index');
+
+                Route::post('skills', [UserSkillController::class, 'store'])
+                    ->name('me.skills.store');
+
+                Route::put('skills/{userSkill}', [UserSkillController::class, 'update'])
+                    ->name('me.skills.update');
+
+                Route::delete('skills/{userSkill}', [UserSkillController::class, 'destroy'])
+                    ->name('me.skills.destroy');
 
             });
         });

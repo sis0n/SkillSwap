@@ -33,7 +33,7 @@ class ProfileController extends BaseController
 
         $this->profileService->syncAvatarFromSocial($user);
 
-        $user->load(['profile', 'availability', 'languages', 'portfolioLinks']);
+        $user->load(['profile', 'availability', 'languages', 'portfolioLinks', 'userSkills.skill.categories']);
 
         return $this->success(
             data: [
@@ -90,7 +90,7 @@ class ProfileController extends BaseController
     public function showPublic(string $username): JsonResponse
     {
         $user = User::where('username', $username)
-            ->with(['profile', 'availability', 'languages', 'portfolioLinks'])
+            ->with(['profile', 'availability', 'languages', 'portfolioLinks', 'userSkills.skill.categories'])
             ->first();
 
         if (!$user) {

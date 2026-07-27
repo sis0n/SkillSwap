@@ -25,6 +25,7 @@ class UserSkillFactory extends Factory
             'experience_level' => fake()->randomElement(['beginner', 'intermediate', 'advanced', 'expert']),
             'years_of_experience' => fake()->numberBetween(0, 20),
             'teaching_style' => fake()->optional()->randomElement(['one-on-one', 'group', 'workshop', 'mentorship']),
+            'featured' => fake()->boolean(20),
             'portfolio_url' => fake()->optional()->url(),
         ];
     }

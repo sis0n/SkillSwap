@@ -71,20 +71,37 @@ class SkillCategorySeeder extends Seeder
             ],
         ];
 
-        foreach ($categories as $categoryData) {
+        $allCategories = [];
+
+        foreach ($categories as $index => $categoryData) {
             $skills = $categoryData['skills'];
             unset($categoryData['skills']);
 
             $categoryData['slug'] = Str::slug($categoryData['name']);
+            $categoryData['sort_order'] = $index;
 
             $category = SkillCategory::create($categoryData);
+            $allCategories[] = $category;
 
-            foreach ($skills as $skillName) {
-                Skill::create([
-                    'category_id' => $category->id,
-                    'name' => $skillName,
-                    'slug' => Str::slug($skillName),
-                ]);
+            foreach ($skills as $skillIndex => $skillName) {
+                $skill = Skill::firstOrCreate(
+                    ['name' => $skillName],
+                    [
+                        'slug' => Str::slug($skillName),
+                        'sort_order' => $skillIndex,
+                        'is_system' => true,
+                    ],
+                );
+
+                $skill->categories()->syncWithoutDetaching([$category->id]);
+            }
+        }
+
+        if (count($allCategories) >= 2) {
+            $crossCategorySkills = Skill::whereIn('name', ['SQL', 'Python', 'JavaScript', 'Figma', 'SEO', 'Copywriting'])->get();
+            $extraCategoryIds = $allCategories->slice(1)->pluck('id')->toArray();
+            foreach ($crossCategorySkills as $skill) {
+                $skill->categories()->syncWithoutDetaching($extraCategoryIds);
             }
         }
     }

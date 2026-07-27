@@ -258,38 +258,109 @@ Relationships:
 
 ### skill_categories
 
-| Column | Type            |
-| ------ | --------------- |
-| id     | bigint          |
-| name   | string unique   |
-| slug   | string unique   |
-| icon   | string nullable |
+**Purpose:** Reference table for skill categories (system-managed). Users cannot create, edit, or delete categories.
+
+| Column      | Type               | Nullable | Default | Notes                       |
+| ----------- | ------------------ | -------- | ------- | --------------------------- |
+| id          | bigint             | No       | —       | Primary Key                 |
+| name        | string             | No       | —       | Display name (unique)       |
+| slug        | string             | No       | —       | URL-friendly identifier (unique) |
+| icon        | string             | Yes      | NULL    | Icon identifier for UI      |
+| sort_order  | unsigned smallint  | No       | 0       | Display order in the UI     |
+| created_at  | timestamp          | No       | —       | Record creation             |
+| updated_at  | timestamp          | No       | —       | Last update                 |
+
+**Constraints:**
+- `name` is unique
+- `slug` is unique
+- System-managed — no public create/edit/delete endpoints
+
+**Indexes:**
+- name
+- slug
 
 ### skills
 
-| Column      | Type          |
-| ----------- | ------------- |
-| id          | bigint        |
-| category_id | bigint FK     |
-| name        | string unique |
-| slug        | string unique |
+**Purpose:** Reference table of skills (system-managed). A skill can belong to multiple categories via the `skill_category_skill` pivot table. Users cannot create, edit, or delete skills directly.
+
+| Column      | Type               | Nullable | Default | Notes                       |
+| ----------- | ------------------ | -------- | ------- | --------------------------- |
+| id          | bigint             | No       | —       | Primary Key                 |
+| name        | string             | No       | —       | Display name (unique, case-insensitive normalized) |
+| slug        | string             | No       | —       | URL-friendly identifier (unique) |
+| sort_order  | unsigned smallint  | No       | 0       | Display order               |
+| is_system   | boolean            | No       | false   | True for seeded skills, false for user-created |
+| created_by  | bigint FK          | Yes      | NULL    | References users.id — null for seeded skills |
+| created_at  | timestamp          | No       | —       | Record creation             |
+| updated_at  | timestamp          | No       | —       | Last update                 |
+
+**Constraints:**
+- `name` is unique (case-insensitive normalized)
+- `slug` is unique
+- System-managed — no public create/edit/delete endpoints
+- `is_system` = true for seeded skills (SkillCategorySeeder), false for user-created skills
+- `created_by` = null for seeded skills, authenticated user ID for user-created skills
+- `is_system` and `created_by` are internal metadata — never exposed in API responses
+- Skill-to-category relationships are stored in the `skill_category_skill` pivot table
+
+**Indexes:**
+- name
+- slug
+
+### skill_category_skill
+
+**Purpose:** Pivot table linking skills to categories (many-to-many). A skill can belong to one or more categories; a category can contain one or more skills.
+
+| Column            | Type      | Nullable | Notes                              |
+| ----------------- | --------- | -------- | ---------------------------------- |
+| id                | bigint    | No       | Primary Key                        |
+| skill_category_id | bigint FK | No       | References skill_categories.id, cascade on delete |
+| skill_id          | bigint FK | No       | References skills.id, cascade on delete |
+| created_at        | timestamp | No       | Record creation                    |
+| updated_at        | timestamp | No       | Last update                        |
+
+**Constraints:**
+- Unique per `(skill_category_id, skill_id)` — prevents duplicate category-skill relationships
+- Both foreign keys cascade on delete — removing a category or skill cleans up pivot rows
+
+**Indexes:**
+- Unique composite index on `(skill_category_id, skill_id)`
 
 ### user_skills
 
-Purpose: User teaching/learning portfolio.
+**Purpose:** Stores the skills a user teaches or wants to learn. Each user can have multiple skills, each with its own experience level, description, and featured status.
 
-| Column              | Type                                        |
-| ------------------- | ------------------------------------------- |
-| id                  | bigint                                      |
-| user_id             | bigint FK                                   |
-| skill_id            | bigint FK                                   |
-| type                | enum(teaching,learning)                     |
-| title               | string                                      |
-| description         | text                                        |
-| experience_level    | enum(beginner,intermediate,advanced,expert) |
-| years_of_experience | integer                                     |
-| teaching_style      | string                                      |
-| portfolio_url       | string nullable                             |
+| Column              | Type                                        | Nullable | Default    | Notes                              |
+| ------------------- | ------------------------------------------- | -------- | ---------- | ---------------------------------- |
+| id                  | bigint                                      | No       | —          | Primary Key                        |
+| user_id             | bigint FK                                   | No       | —          | References users.id, cascade on delete |
+| skill_id            | bigint FK                                   | No       | —          | References skills.id, cascade on delete |
+| type                | string                                      | No       | —          | 'teaching' or 'learning' (validated in app layer) |
+| title               | string(100)                                 | Yes      | NULL       | Custom title for this skill entry; null displays skill.name instead |
+| description         | text                                        | Yes      | NULL       | Free-text description of proficiency or learning goals |
+| experience_level    | string                                      | No       | 'beginner' | 'beginner', 'intermediate', 'advanced', 'expert' |
+| years_of_experience | integer                                     | Yes      | NULL       | Validated: 0–60, nullable           |
+| teaching_style      | string                                      | Yes      | NULL       | Free-text teaching approach description |
+| featured            | boolean                                     | No       | false      | True if user wants to highlight this skill (max 3 per user) |
+| portfolio_url       | string                                      | Yes      | NULL       | **Deprecated.** Use portfolio_links table instead. Column retained for data preservation; not exposed in API or frontend. |
+| created_at          | timestamp                                   | No       | —          | Record creation                    |
+| updated_at          | timestamp                                   | No       | —          | Last update                        |
+
+**Constraints:**
+- Unique per `(user_id, skill_id, type)` — a user cannot add the same skill for the same purpose twice, but can teach AND learn the same skill simultaneously.
+- `type` validated at application layer (`in:teaching,learning`).
+- `experience_level` validated at application layer (`in:beginner,intermediate,advanced,expert`).
+- `featured` — maximum 3 featured skills per user, enforced at application layer.
+- `years_of_experience` — nullable, integer, min:0, max:60, validated at application layer.
+
+**Indexes:**
+- user_id
+- skill_id
+- type
+- Unique composite index on `(user_id, skill_id, type)`
+
+**Notes:**
+- `portfolio_url` is **deprecated**. Do not use in any API resource, form request, or frontend component. The `portfolio_links` table (Phase 4.6) is the current mechanism for external profile/portfolio links. The column will be removed in a future cleanup migration.
 
 ### exchange_requests
 
@@ -363,7 +434,8 @@ USERS ||--o{ USER_AVAILABILITY : has
 USERS ||--o{ USER_LANGUAGES : speaks
 LANGUAGES ||--o{ USER_LANGUAGES : used_in
 USERS ||--o{ PORTFOLIO_LINKS : showcases
-SKILL_CATEGORIES ||--o{ SKILLS : contains
+SKILL_CATEGORIES ||--o{ SKILL_CATEGORY_SKILL : categorized
+SKILL_CATEGORY_SKILL }o--|| SKILLS : categorized
 USERS ||--o{ USER_SKILLS : owns
 SKILLS ||--o{ USER_SKILLS : references
 USERS ||--o{ EXCHANGE_REQUESTS : sends

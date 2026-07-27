@@ -717,7 +717,65 @@ Get the authenticated user's profile including personal information and availabi
           "url": "linkedin.com/in/johndoe",
           "display_order": 1
         }
-      ]
+      ],
+      "user_skills": {
+        "teaching": [
+          {
+            "id": 1,
+            "skill_id": 5,
+            "skill": {
+              "id": 5,
+              "name": "Laravel",
+              "slug": "laravel",
+              "sort_order": 0,
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Programming",
+                  "slug": "programming"
+                }
+              ]
+            },
+            "type": "teaching",
+            "title": "Laravel Development",
+            "description": "I can teach Laravel from basics to advanced topics.",
+            "experience_level": "advanced",
+            "years_of_experience": 5,
+            "teaching_style": "Hands-on, project-based",
+            "featured": true,
+            "created_at": "2026-07-26T12:00:00.000000Z",
+            "updated_at": "2026-07-26T12:00:00.000000Z"
+          }
+        ],
+        "learning": [
+          {
+            "id": 2,
+            "skill_id": 12,
+            "skill": {
+              "id": 12,
+              "name": "Spanish",
+              "slug": "spanish",
+              "sort_order": 0,
+              "categories": [
+                {
+                  "id": 4,
+                  "name": "Languages",
+                  "slug": "languages"
+                }
+              ]
+            },
+            "type": "learning",
+            "title": "Spanish Language",
+            "description": "I want to become fluent in conversational Spanish.",
+            "experience_level": "beginner",
+            "years_of_experience": null,
+            "teaching_style": null,
+            "featured": false,
+            "created_at": "2026-07-26T12:00:00.000000Z",
+            "updated_at": "2026-07-26T12:00:00.000000Z"
+          }
+        ]
+      }
     }
   }
 }
@@ -873,7 +931,65 @@ Get a user's public profile. Only public fields are returned.
           "url": "github.com/johndoe",
           "display_order": 0
         }
-      ]
+      ],
+      "user_skills": {
+        "teaching": [
+          {
+            "id": 1,
+            "skill_id": 5,
+            "skill": {
+              "id": 5,
+              "name": "Laravel",
+              "slug": "laravel",
+              "sort_order": 0,
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Programming",
+                  "slug": "programming"
+                }
+              ]
+            },
+            "type": "teaching",
+            "title": "Laravel Development",
+            "description": "I can teach Laravel from basics to advanced topics.",
+            "experience_level": "advanced",
+            "years_of_experience": 5,
+            "teaching_style": "Hands-on, project-based",
+            "featured": true,
+            "created_at": "2026-07-26T12:00:00.000000Z",
+            "updated_at": "2026-07-26T12:00:00.000000Z"
+          }
+        ],
+        "learning": [
+          {
+            "id": 2,
+            "skill_id": 12,
+            "skill": {
+              "id": 12,
+              "name": "Spanish",
+              "slug": "spanish",
+              "sort_order": 0,
+              "categories": [
+                {
+                  "id": 4,
+                  "name": "Languages",
+                  "slug": "languages"
+                }
+              ]
+            },
+            "type": "learning",
+            "title": "Spanish Language",
+            "description": "I want to become fluent in conversational Spanish.",
+            "experience_level": "beginner",
+            "years_of_experience": null,
+            "teaching_style": null,
+            "featured": false,
+            "created_at": "2026-07-26T12:00:00.000000Z",
+            "updated_at": "2026-07-26T12:00:00.000000Z"
+          }
+        ]
+      }
     }
   }
 }
@@ -1048,67 +1164,565 @@ Replace all availability slots for the authenticated user. This is a full replac
 
 # Skill Categories
 
-| Method | Endpoint          |
-| ------ | ----------------- |
-| GET    | /skill-categories |
+| Method | Endpoint          | Auth  |
+| ------ | ----------------- | ----- |
+| GET    | /skill-categories | Guest |
+
+## GET /skill-categories
+
+Get all skill categories, ordered by `sort_order` then alphabetically by name.
+
+**Auth:** Guest (no authentication required)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Skill categories retrieved.",
+  "data": {
+    "skill_categories": [
+      {
+        "id": 1,
+        "name": "Programming",
+        "slug": "programming",
+        "icon": "code",
+        "sort_order": 0
+      },
+      {
+        "id": 2,
+        "name": "Design",
+        "slug": "design",
+        "icon": "palette",
+        "sort_order": 1
+      }
+    ]
+  }
+}
+```
+
+**Notes:**
+- Categories are system-managed reference data. No create/edit/delete endpoints.
+- Response order: `sort_order` ascending, then alphabetical by `name`.
 
 ---
 
 # Skills
 
-| Method | Endpoint     |
-| ------ | ------------ |
-| GET    | /skills      |
-| GET    | /skills/{id} |
-| POST   | /skills      |
+| Method | Endpoint     | Auth  |
+| ------ | ------------ | ----- |
+| GET    | /skills      | Guest |
 
-Create Skill
+## GET /skills
 
-- category_id
-- name
+Search and filter available skills. Skills are system-managed reference data — users cannot create skills.
+
+**Auth:** Guest (no authentication required)
+
+**Query Parameters:**
+
+| Parameter    | Type    | Required | Description                                    |
+| ------------ | ------- | -------- | ---------------------------------------------- |
+| search       | string  | No       | Search skills by name (partial match)          |
+| category_id  | integer | No       | Filter by category ID                          |
+
+**Examples:**
+- `/skills` — list all skills
+- `/skills?search=photo` — search for skills matching "photo"
+- `/skills?category_id=4` — filter by photography category
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Skills retrieved.",
+  "data": {
+    "skills": [
+      {
+        "id": 1,
+        "name": "PHP",
+        "slug": "php",
+        "sort_order": 0,
+        "categories": [
+          {
+            "id": 1,
+            "name": "Programming",
+            "slug": "programming"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Laravel",
+        "slug": "laravel",
+        "sort_order": 1,
+        "categories": [
+          {
+            "id": 1,
+            "name": "Programming",
+            "slug": "programming"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Notes:**
+- Skills are a global catalog with unique names (case-insensitive normalized).
+- Users can create custom skills via `POST /me/skills` using `skill_name` + `category_ids`.
+- If a skill with the same normalized name already exists, the existing record is reused.
+- Response order: `sort_order` ascending, then alphabetical by `name`.
+- The `categories` array is ordered by `sort_order` ascending, then alphabetical by `name`.
+- A skill can belong to multiple categories.
 
 ---
 
 # My Skills
 
-| Method | Endpoint        |
-| ------ | --------------- |
-| GET    | /me/skills      |
-| POST   | /me/skills      |
-| PUT    | /me/skills/{id} |
-| DELETE | /me/skills/{id} |
+| Method | Endpoint          | Auth  |
+| ------ | ----------------- | ----- |
+| GET    | /me/skills        | User  |
+| POST   | /me/skills        | User  |
+| PUT    | /me/skills/{id}   | User  |
+| DELETE | /me/skills/{id}   | User  |
 
-Body
+---
 
-- skill_id
-- type (teaching|learning)
-- title
-- description
-- experience_level
-- years_of_experience
-- teaching_style
-- portfolio_url
+## GET /me/skills
+
+Get all skills for the authenticated user.
+
+**Auth:** User (Sanctum session)
+
+**Query Parameters:**
+
+| Parameter    | Type    | Required | Description                                    |
+| ------------ | ------- | -------- | ---------------------------------------------- |
+| category_id  | integer | No       | Filter skills by category ID                   |
+
+**Examples:**
+- `/me/skills` — list all of my skills
+- `/me/skills?category_id=3` — filter my skills by category ID 3
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "User skills retrieved.",
+  "data": {
+    "user_skills": [
+      {
+        "id": 1,
+        "skill_id": 5,
+        "skill": {
+          "id": 5,
+          "name": "Laravel",
+          "slug": "laravel",
+          "sort_order": 0,
+          "categories": [
+            {
+              "id": 1,
+              "name": "Programming",
+              "slug": "programming"
+            }
+          ]
+        },
+        "type": "teaching",
+        "title": "Laravel Development",
+        "description": "I can teach Laravel from basics to advanced topics.",
+        "experience_level": "advanced",
+        "years_of_experience": 5,
+        "teaching_style": "Hands-on, project-based",
+        "featured": true,
+        "created_at": "2026-07-26T12:00:00.000000Z",
+        "updated_at": "2026-07-26T12:00:00.000000Z"
+      },
+      {
+        "id": 2,
+        "skill_id": 12,
+        "skill": {
+          "id": 12,
+          "name": "Spanish",
+          "slug": "spanish",
+          "sort_order": 0,
+          "categories": [
+            {
+              "id": 4,
+              "name": "Languages",
+              "slug": "languages"
+            }
+          ]
+        },
+        "type": "learning",
+        "title": "Spanish Language",
+        "description": "I want to become fluent in conversational Spanish.",
+        "experience_level": "beginner",
+        "years_of_experience": null,
+        "teaching_style": null,
+        "featured": false,
+        "created_at": "2026-07-26T12:00:00.000000Z",
+        "updated_at": "2026-07-26T12:00:00.000000Z"
+      }
+    ]
+  }
+}
+```
+
+**Response Order (deterministic):**
+1. Featured skills first (`featured = true`)
+2. Teaching skills before learning skills
+3. Alphabetical by skill name within each group
+
+---
+
+## POST /me/skills
+
+Add a new skill for the authenticated user.
+
+**Auth:** User (Sanctum session)
+
+**Request:**
+```json
+{
+  "skill_id": 5,
+  "type": "teaching",
+  "title": "Laravel Development",
+  "description": "I can teach Laravel from basics to advanced topics.",
+  "experience_level": "advanced",
+  "years_of_experience": 5,
+  "teaching_style": "Hands-on, project-based",
+  "featured": true
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "User skill created.",
+  "data": {
+    "user_skill": {
+      "id": 1,
+      "skill_id": 5,
+      "skill": {
+        "id": 5,
+        "name": "Laravel",
+        "slug": "laravel",
+        "sort_order": 0,
+        "categories": [
+          {
+            "id": 1,
+            "name": "Programming",
+            "slug": "programming"
+          }
+        ]
+      },
+      "type": "teaching",
+      "title": "Laravel Development",
+      "description": "I can teach Laravel from basics to advanced topics.",
+      "experience_level": "advanced",
+      "years_of_experience": 5,
+      "teaching_style": "Hands-on, project-based",
+      "featured": true,
+      "created_at": "2026-07-26T12:00:00.000000Z",
+      "updated_at": "2026-07-26T12:00:00.000000Z"
+    }
+  }
+}
+```
+
+**Error — Duplicate (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "skill_id": ["You have already added this skill for teaching."]
+  }
+}
+```
+
+**Error — Skill limit reached (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "skill_id": ["You can only have up to 30 skills."]
+  }
+}
+```
+
+**Error — Featured limit reached (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "featured": ["You can only feature up to 3 skills."]
+  }
+}
+```
+
+**Validation Rules:**
+
+| Field             | Rules                                                    |
+| ----------------- | -------------------------------------------------------- |
+| skill_id          | integer, required_without:skill_name, exists:skills,id   |
+| skill_name        | string, required_without:skill_id, max:255               |
+| category_ids      | array, required_with:skill_name, min:1                   |
+| category_ids.*    | integer, distinct, exists:skill_categories,id            |
+| type              | string, required, in:teaching,learning                   |
+| title             | string, nullable, max:100                                |
+| description       | string, nullable, max:1000                               |
+| experience_level  | string, required, in:beginner,intermediate,advanced,expert |
+| years_of_experience | integer, nullable, min:0, max:60                       |
+| teaching_style    | string, nullable, max:500                                |
+| featured          | boolean, nullable                                        |
+
+**Note:** To add a skill from the existing system list, send `skill_id`. To create a new custom skill, send `skill_name` + `category_ids` (array) instead. Skill names are normalized (trimmed, spaces collapsed, case-insensitive lookup). If a matching name already exists, the existing record is reused (no duplicate created); provided categories are attached to the existing skill if not already present. New skills are auto-assigned a slug based on the skill name. A skill can belong to multiple categories.
+
+**Business Rule — Duplicate Prevention:**
+A user cannot add the exact same skill for the same purpose (type) twice.
+- Teaching → PHP (existing) + Teaching → PHP (new) → **Rejected**
+- Teaching → PHP (existing) + Learning → PHP (new) → **Allowed**
+- Enforced at both the database level (unique composite index on `(user_id, skill_id, type)`) and the application validation layer.
+
+**Business Rule — Skill Limit:**
+A user can have a maximum of 30 skills total. Attempting to add a 31st skill is rejected.
+
+**Business Rule — Featured Limit:**
+A user can feature a maximum of 3 skills. Attempting to feature a 4th is rejected.
+
+---
+
+## PUT /me/skills/{userSkill}
+
+Update an existing user skill. Only the owner can update their skill.
+
+**Auth:** User (Sanctum session)
+
+**Request:**
+```json
+{
+  "title": "Advanced Laravel Development",
+  "description": "I can teach Laravel, Livewire, and API development.",
+  "experience_level": "expert",
+  "years_of_experience": 6,
+  "teaching_style": "Hands-on, project-based",
+  "featured": true
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "User skill updated.",
+  "data": {
+    "user_skill": {
+      "id": 1,
+      "skill_id": 5,
+      "skill": { ... },
+      "type": "teaching",
+      "title": "Advanced Laravel Development",
+      "description": "I can teach Laravel, Livewire, and API development.",
+      "experience_level": "expert",
+      "years_of_experience": 6,
+      "teaching_style": "Hands-on, project-based",
+      "featured": true,
+      "created_at": "2026-07-26T12:00:00.000000Z",
+      "updated_at": "2026-07-26T13:00:00.000000Z"
+    }
+  }
+}
+```
+
+**Error — Forbidden (403):**
+```json
+{
+  "success": false,
+  "message": "You do not own this skill."
+}
+```
+
+**Error — Featured limit (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "featured": ["You can only feature up to 3 skills."]
+  }
+}
+```
+
+**Validation Rules:**
+
+| Field             | Rules                                                    |
+| ----------------- | -------------------------------------------------------- |
+| title             | string, nullable, max:100                                |
+| description       | string, nullable, max:1000                               |
+| experience_level  | string, nullable, in:beginner,intermediate,advanced,expert |
+| years_of_experience | integer, nullable, min:0, max:60                       |
+| teaching_style    | string, nullable, max:500                                |
+| featured          | boolean, nullable                                        |
+
+**Note:** `skill_id` and `type` cannot be changed after creation. To change the skill or type, delete and recreate.
+
+---
+
+## DELETE /me/skills/{userSkill}
+
+Delete a user skill. Only the owner can delete their skill.
+
+**Auth:** User (Sanctum session)
+
+**Success Response (204):** No content
+
+**Error — Forbidden (403):**
+```json
+{
+  "success": false,
+  "message": "You do not own this skill."
+}
+```
+
+**Error — Active Exchange Request (422):**
+```json
+{
+  "success": false,
+  "message": "Cannot delete a skill that is part of an active exchange request."
+}
+```
 
 ---
 
 # Marketplace
 
-| Method | Endpoint     |
-| ------ | ------------ |
-| GET    | /marketplace |
+| Method | Endpoint      | Auth  |
+| ------ | ------------- | ----- |
+| GET    | /marketplace  | Guest |
 
-Supported Query Parameters
+## GET /marketplace
 
-- search
-- category
-- type
-- experience
-- page
-- per_page
+Browse and search potential learning partners. Returns a lightweight, paginated list of eligible users — those with a verified email, a completed profile, and at least one Marketplace-eligible skill — whose skills match the provided search criteria. No authentication required — anyone can discover potential partners.
 
-Example
+**Auth:** Guest (no authentication required)
 
-GET /marketplace?search=Laravel&category=Programming&type=teaching
+**Rate Limiting:** Uses the standard `throttle:api` middleware.
+
+**Query Parameters:**
+
+| Parameter        | Type    | Required | Description                                    |
+| ---------------- | ------- | -------- | ---------------------------------------------- |
+| q                | string  | No       | Search users by skill name (partial match, case-insensitive) |
+| category_id      | integer | No       | Filter by skill category ID                    |
+| type             | string  | No       | Filter by skill direction: `teaching` or `learning` |
+| experience_level | string  | No       | Filter by skill-specific experience level: `beginner`, `intermediate`, `advanced`, `expert` |
+| page             | integer | No       | Page number for pagination (default: 1)        |
+| per_page         | integer | No       | Results per page (default: 20, max: 50)        |
+
+**Examples:**
+- `GET /marketplace` — browse all eligible users (paginated)
+- `GET /marketplace?q=laravel` — search users by skill name
+- `GET /marketplace?q=laravel&type=teaching` — search with type filter
+- `GET /marketplace?category_id=1&experience_level=advanced` — filter by category + experience level
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Marketplace retrieved.",
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "username": "johndoe",
+        "avatar_url": "https://api.skillswap.com/storage/avatars/abc123.jpg",
+        "headline": "Full-stack Developer & Mentor",
+        "bio": "Full-stack developer passionate about teaching.",
+        "location": "Manila, Philippines",
+        "matched_skills": [
+          {
+            "skill_name": "Laravel",
+            "type": "teaching",
+            "experience_level": "advanced"
+          },
+          {
+            "skill_name": "PHP",
+            "type": "teaching",
+            "experience_level": "intermediate"
+          },
+          {
+            "skill_name": "Vue.js",
+            "type": "teaching",
+            "experience_level": "intermediate"
+          }
+        ],
+        "matched_skills_count": 3
+      }
+    ],
+    "meta": {
+      "current_page": 1,
+      "last_page": 5,
+      "per_page": 20,
+      "total": 100
+    }
+  }
+}
+```
+
+**Notes:**
+- `matched_skills` contains only skills that match the current search criteria and active filters — not the user's full skill list. Limited to the top 3 matching skills for preview. When no query or filter is provided, `matched_skills` shows the user's top 3 Marketplace-eligible skills as a preview. The full skill list is available on the user's public profile.
+- `matched_skills_count` reflects the total number of the user's skills that remain after all active Marketplace search criteria and filters are applied. When no query or filter is provided, it reflects the user's total Marketplace-eligible skill count.
+- **Search ranking** (when `q` is provided) uses deterministic relevance-based priority. Ranking is calculated after all active filters have been applied — only matching skills influence the order:
+   1. Exact skill name match — skills whose name matches the search term exactly rank highest
+   2. Partial skill name match — skills whose name matches the search term partially
+   3. Number of matching skills — counted from the set of skills that remain after all active Marketplace search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Marketplace-eligible skills are not counted.
+   4. Alphabetical by display name — final deterministic tie-breaker
+- **Browse mode** (no `q` parameter) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by display name.
+- Search text is optional. Filters operate independently — users may browse using filters only.
+- The authenticated user (if logged in) is excluded from results.
+- Response uses Laravel's standard pagination meta structure.
+- `experience_level` in `matched_skills` is skill-specific (`user_skills.experience_level`), not profile-wide.
+- **Eligibility:** A user must satisfy all three requirements to appear in Marketplace: (1) email verified, (2) profile completed (5+ contributing fields — see FEATURES.MD Profile Completion), (3) at least one Marketplace-eligible skill. A Marketplace-eligible skill is a user_skill that is both approved and discoverable in Marketplace. For the MVP, all approved user skills are Marketplace-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension). Eligibility is evaluated automatically — no manual application or approval required. If a user later fails to satisfy any requirement, they are excluded from results until all requirements are met again.
+- The MVP ranking intentionally excludes advanced signals (endorsements, completed exchanges, profile completeness, popularity, activity, reputation, AI recommendations). These are deferred to future phases — see BACKLOG.MD (items #8, #10, #11) for roadmap details.
+
+**Error — Invalid category_id (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "category_id": ["The selected category_id is invalid."]
+  }
+}
+```
+
+**Error — Invalid type (422):**
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "type": ["The type must be one of: teaching, learning."]
+  }
+}
+```
+
+**Validation Rules:**
+
+| Field             | Rules                                    |
+| ----------------- | ---------------------------------------- |
+| q                 | string, nullable, max:255                |
+| category_id       | integer, nullable, exists:skill_categories,id |
+| type              | string, nullable, in:teaching,learning   |
+| experience_level  | string, nullable, in:beginner,intermediate,advanced,expert |
+| page              | integer, nullable, min:1                 |
+| per_page          | integer, nullable, min:1, max:50         |
 
 ---
 
@@ -1228,7 +1842,7 @@ Guest
 
 - Register
 - Login
-- Browse marketplace
+- Browse marketplace (`GET /marketplace`)
 - View public profiles (`GET /users/{username}`)
 
 Authenticated User

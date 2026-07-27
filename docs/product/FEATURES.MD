@@ -297,7 +297,7 @@ Profile completion rules are designed to support (but not constrain) the followi
 
 These rules should be re-evaluated when:
 
-- **Phase 5 (Skills)** is implemented — skills are a strong trust signal. The completion threshold may increase or skills may become a contributing field.
+- **Phase 5 (Skills) is implemented** — skills are a strong trust signal. At minimum 1 skill (teaching or learning) is expected to count as a contributing field. The completion threshold may increase from 5 to 6 if skills are added.
 - User research indicates that users trust profiles differently than assumed.
 - The platform introduces new profile fields (e.g., social links, education, certifications).
 
@@ -307,15 +307,145 @@ These rules should be re-evaluated when:
 
 ## Description
 
-Users can manage the skills they can teach and the skills they want to learn.
+Users can manage the skills they can teach and the skills they want to learn. Each skill entry includes type (teaching/learning), experience level, description, years of experience, and optional featured status.
 
 ### Features
 
 - Add teaching skills
 - Add learning skills
-- Remove skills
-- Search skills
+- Remove skills (blocked if used by active exchange requests)
+- Search skills (case-insensitive partial match)
 - Browse skill categories
+- Feature up to 3 skills (highlighted on profile)
+- Duplicate prevention: same skill cannot be added twice for the same purpose
+- Custom skill creation: type any skill name; if it doesn't exist, the system creates it automatically
+- Optional user title: customize how your skill appears on your profile; null displays skill name
+
+---
+
+### Skill Catalog
+
+The `skills` table is the master catalog of all skills. Skill names are globally unique — a skill exists only once in the catalog.
+
+**Name normalization:**
+- Leading/trailing whitespace is trimmed
+- Multiple spaces are collapsed into one
+- Lookups are case-insensitive (`LOWER(name)`)
+
+Examples:
+- `" laravel "` → matches `"Laravel"` → reused
+- `"LARAVEL"` → matches `"Laravel"` → reused
+- `"Adobe     Photoshop"` → normalized to `"Adobe Photoshop"`
+
+**Metadata fields (internal, not exposed):**
+- `is_system`: `true` for seeded skills, `false` for user-created skills
+- `created_by`: `null` for seeded skills, authenticated user ID for user-created skills
+
+### Custom Skill Creation
+
+Users can create custom skills that don't exist in the catalog. When a user submits a skill name that doesn't exist (case-insensitive match), the system automatically creates a new `skills` record and links it to the user's `user_skills`. If the name already exists, the existing record is reused — no duplicates are created.
+
+### Skill Fields
+
+| Field               | Type     | Required | Validation                    | Notes                              |
+| ------------------- | -------- | -------- | ----------------------------- | ---------------------------------- |
+| skill_id            | integer  | No*      | exists:skills,id              | References the skills reference table |
+| skill_name          | string   | No*      | max:255                       | Custom skill name for creating new skills |
+| category_ids        | array    | No*      | array, min:1, exists:skill_categories,id (each) | Required only when creating a new skill (`skill_name`). A skill can belong to multiple categories. |
+| type                | enum     | Yes      | teaching, learning            | Purpose of the skill entry         |
+| title               | string   | No       | max:100, nullable             | Custom title for display; null shows skill.name |
+| description         | text     | No       | max:1000                      | Free-text proficiency or goal       |
+| experience_level    | enum     | Yes      | beginner, intermediate, advanced, expert | Skill-specific proficiency  |
+| years_of_experience | integer  | No       | min:0, max:60                 | Years of experience in this skill   |
+| teaching_style      | string   | No       | max:500                       | How the user teaches (e.g. hands-on, lecture) |
+| featured            | boolean  | No       | true/false, default false     | Highlight this skill on profile (max 3) |
+
+*\*Either `skill_id` or `skill_name` is required. If `skill_name` is provided, `category_ids` is also required (array of valid category IDs).*
+
+---
+
+### Business Rules
+
+#### Duplicate Prevention
+
+A user can never add the exact same skill for the same purpose (type). The following is **rejected:**
+- Teaching → PHP (existing) + Teaching → PHP (new)
+
+The following is **allowed:**
+- Teaching → PHP + Learning → PHP (a user may teach and learn the same skill)
+
+Enforced at:
+- **Database level:** Unique composite index on `(user_id, skill_id, type)`
+- **Application level:** Validation in `StoreUserSkillRequest`
+
+#### Skill Limit
+
+A user can have a maximum of **30 skills** total. Attempting to add a 31st skill returns a 422 validation error. This prevents abuse and encourages users to curate their skill list.
+
+#### Featured Skills
+
+- Users can feature up to **3 skills**
+- Featured skills appear **first** on Profile and Public Profile
+- Marketplace continues using the full skill list (featured has no effect on search ranking)
+- Enforced at the application validation layer
+
+#### Years of Experience
+
+- Nullable (user may not want to disclose)
+- If provided, must be an integer between 0 and 60
+
+#### Deleting Skills
+
+A skill can only be removed if it is **not** referenced by an active exchange request:
+
+| Exchange Request Status | Deletion Allowed |
+| ----------------------- | ---------------- |
+| pending                 | No               |
+| accepted                | No               |
+| completed               | Yes              |
+| cancelled               | Yes              |
+| declined                | Yes              |
+
+This prevents the data integrity issue of exchange requests referencing deleted skills.
+
+---
+
+### Search & Filtering
+
+Search and filtering is supported on the `GET /skills` endpoint (public):
+
+| Parameter   | Type     | Description                           |
+| ----------- | -------- | ------------------------------------- |
+| search      | string   | Partial name search (e.g. "photo")    |
+| category_id | integer  | Filter by category                    |
+
+The `GET /me/skills` endpoint returns all of the authenticated user's skills with deterministic ordering. It also supports `?category_id=` to filter by a valid category:
+
+| Parameter   | Type     | Validation                 | Description                          |
+| ----------- | -------- | -------------------------- | ------------------------------------ |
+| category_id | integer  | exists:skill_categories,id | Filter own skills by category        |
+
+Invalid category IDs return a 422 validation error.
+
+---
+
+### Response Ordering
+
+All skill list responses follow this deterministic order:
+1. Featured skills first (`featured = true`)
+2. Teaching skills before learning skills
+3. Alphabetical by skill name within each group
+
+---
+
+### Empty States
+
+When a user has no skills:
+- **Teaching section:** "No teaching skills yet."
+- **Learning section:** "No learning goals yet."
+- Containers are not rendered if empty (avoids showing empty sections)
+
+---
 
 ### Skill Categories
 
@@ -345,21 +475,61 @@ So others can discover me.
 
 ## Description
 
-The marketplace allows users to browse available teachers and learners.
+The marketplace allows users to discover potential learning partners. It is the entry point for the exchange workflow — users browse, search, filter, view profiles, and initiate exchange requests. Only users who satisfy all Marketplace eligibility requirements appear in results.
 
 ### Features
 
-- Browse users
-- Search by skill
-- Filter by category
-- View user profile
-- View skill information
+- Browse all eligible users (paginated, no search required)
+- Search by skill name (partial match, case-insensitive)
+- Filter by skill category
+- Filter by teaching/learning direction
+- Filter by skill-specific experience level
+- View matched skills preview — only skills matching the current search criteria and active filters (top 3 + count)
+- View user profile (navigate to `/users/{username}`)
+- Initiate exchange request (Phase 7)
+
+### Business Rules
+
+- Marketplace is publicly accessible — no authentication required to browse.
+- Exchange Requests (Phase 7) still require authentication — browsing and discovery do not.
+- Marketplace cards are lightweight previews. They are not complete profiles.
+- Selecting a card navigates to the user's Public Profile (`/users/{username}`) for the full view.
+- Marketplace does not duplicate Public Profile functionality. It provides discovery; Public Profile provides detail.
+- A user must satisfy all three requirements to appear in Marketplace: (1) email verified, (2) profile completed (5+ contributing fields — see Profile Completion above), (3) at least one Marketplace-eligible skill. A Marketplace-eligible skill is a user_skill that is both approved and discoverable in Marketplace. For the MVP, all approved user skills are Marketplace-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension).
+- Eligibility is evaluated automatically by the platform. Users do not submit applications, and administrators do not manually approve listings. Once all requirements are met, the user becomes discoverable. If a user later fails to satisfy any requirement, they become ineligible until all requirements are met again.
+- Future enhancements such as marketplace moderation, suspension, verification, featured users, trusted experts, and manual review workflows are outside MVP scope.
 
 ### Search Filters
 
-- Skill
-- Category
-- Experience Level
+| Filter            | Type     | Description                                      |
+| ----------------- | -------- | ------------------------------------------------ |
+| Skill             | string   | Free-text search by skill name (partial, case-insensitive) |
+| Category          | integer  | Filter by skill category ID                      |
+| Type              | enum     | Filter by direction: teaching, learning           |
+| Experience Level  | enum     | Filter by skill-specific proficiency: beginner, intermediate, advanced, expert |
+
+**Note:** The experience level filter operates on `user_skills.experience_level` (skill-specific), not `profiles.experience_level` (profile-wide). A user may be a "beginner" at Photography but "advanced" at Design — these are independent.
+
+### Display
+
+- Results show a lightweight card: avatar, name, headline, location, matched skill chips (max 3), total match count. Cards display only skills that match the current search criteria and active filters — unrelated skills are not shown. When browsing without a query or filter, cards show the user's top 3 Marketplace-eligible skills as a preview.
+- **Search ranking** (when `q` is provided) uses deterministic relevance-based priority. Ranking is calculated after all active filters have been applied — only matching skills influence the order:
+   1. Exact skill name match
+   2. Partial skill name match
+   3. Number of matching skills — counted from the set of skills that remain after all active Marketplace search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Marketplace-eligible skills are not counted.
+   4. Alphabetical by display name (final tie-breaker)
+- **Browse mode** (no search query) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by display name.
+- No authentication required — anyone can browse the marketplace
+- Search text is optional. Filters operate independently — users may browse using category, type, or experience level filters without entering a search term. When no query or filter is active, all eligible users are shown (paginated, default ordering).
+- The authenticated user (if logged in) is excluded from their own results
+- Clicking a user card navigates to the full public profile (`/users/{username}`)
+
+### States
+
+- **Loading:** Skeleton grid with 6 placeholder cards
+- **Initial:** All eligible users displayed immediately with "Browse potential learning partners" heading
+- **Empty:** "No matches found" with suggestion to broaden filters
+- **Error:** Error message with retry button
 
 ### User Story
 
@@ -683,18 +853,36 @@ Support:
 
 ## Skills
 
-- [ ] Add Skill
-- [ ] Remove Skill
-- [ ] Search Skills
-- [ ] Categories
+- [x] Add Skill (with type, experience_level, title, description, years_of_experience, teaching_style)
+- [x] Remove Skill (with active exchange request guard)
+- [x] Update Skill
+- [x] Search Skills (?search=, ?category_id=)
+- [x] Browse Skill Categories
+- [x] Duplicate Prevention (unique per user_id + skill_id + type)
+- [x] Skill Limit (max 30 per user)
+- [x] Featured Skills (max 3 per user)
+- [x] Years of Experience Validation (integer, 0–60)
+- [x] Response Ordering (featured first, teaching before learning, alphabetical)
+- [x] Empty States (teaching/learning-specific messages)
+- [x] Profile Integration (user_skills on Profile + Public Profile)
+- [x] UserSkill Resource (extensible meta wrapper for future fields)
+- [x] Tests (25 test cases)
 
 ---
 
 ## Marketplace
 
-- [ ] Browse Users
-- [ ] Search Users
-- [ ] Filter Users
+- [ ] Browse Users (paginated, default alphabetical ordering, no search required)
+- [ ] Search Users (by skill name, case-insensitive partial match, relevance-ranked)
+- [ ] Filter Users (by category, type, experience level — filters work independently of search)
+- [ ] Marketplace Page (search bar, filter bar, user cards grid, pagination)
+- [ ] Marketplace User Resource (lightweight listing-optimized response)
+- [ ] Matched Skills Preview (top 3 + total count)
+- [ ] Loading / Empty / Error States
+- [ ] Responsive Layout (1/2/3 columns)
+- [ ] Dark Mode Support
+- [ ] Backend Tests (15 test cases)
+- [ ] Documentation (API.md, UI.md, ROADMAP.md, FEATURES.md)
 
 ---
 

@@ -19,6 +19,7 @@ const EmailVerificationPage = lazy(() => import("@/features/auth/pages/EmailVeri
 const OAuthCallbackPage = lazy(() => import("@/features/auth/pages/OAuthCallbackPage"))
 const ProfilePage = lazy(() => import("@/features/profile/pages/ProfilePage"))
 const PublicProfilePage = lazy(() => import("@/features/profile/pages/PublicProfilePage"))
+const SkillsPage = lazy(() => import("@/features/skills/pages/SkillsPage"))
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((state) => state.initialize)
@@ -62,6 +63,7 @@ function App() {
                   <Route element={<AuthenticatedLayout />}>
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="profile" element={<ProfilePage />} />
+                    <Route path="skills" element={<SkillsPage />} />
                   </Route>
                 </Route>
               </Routes>

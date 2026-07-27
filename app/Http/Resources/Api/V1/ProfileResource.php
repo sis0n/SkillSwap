@@ -60,6 +60,26 @@ class ProfileResource extends JsonResource
             'portfolio_links' => PortfolioLinkResource::collection(
                 $this->whenLoaded('portfolioLinks')
             ),
+            'user_skills' => $this->when($this->relationLoaded('userSkills'), function () {
+                $skills = $this->userSkills->sort(function ($a, $b) {
+                    if ($a->featured !== $b->featured) {
+                        return $b->featured <=> $a->featured;
+                    }
+                    if ($a->type !== $b->type) {
+                        return $a->type === 'teaching' ? -1 : 1;
+                    }
+                    return strcasecmp($a->skill->name ?? '', $b->skill->name ?? '');
+                });
+
+                return [
+                    'teaching' => UserSkillResource::collection(
+                        $skills->where('type', 'teaching')->values()
+                    ),
+                    'learning' => UserSkillResource::collection(
+                        $skills->where('type', 'learning')->values()
+                    ),
+                ];
+            }),
         ];
     }
 }

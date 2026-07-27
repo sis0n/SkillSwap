@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SkillsSection } from "@/features/skills/components/SkillsSection"
 import { usePublicProfile } from "@/features/profile/hooks/useProfile"
 import { cn } from "@/lib/utils"
 
@@ -197,6 +198,21 @@ export default function PublicProfilePage() {
                       ))}
                   </div>
                 </div>
+              )}
+
+              {user.user_skills && (
+                <>
+                  <SkillsSection
+                    skills={user.user_skills.teaching}
+                    type="teaching"
+                    emptyMessage="No teaching skills yet."
+                  />
+                  <SkillsSection
+                    skills={user.user_skills.learning}
+                    type="learning"
+                    emptyMessage="No learning goals yet."
+                  />
+                </>
               )}
 
               <Button className="mt-2 w-full" asChild>

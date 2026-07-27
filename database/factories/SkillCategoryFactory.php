@@ -21,6 +21,7 @@ class SkillCategoryFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name),
             'icon' => null,
+            'sort_order' => 0,
         ];
     }
 }
