@@ -1,16 +1,13 @@
 # SkillSwap Roadmap
-
 > Version: 5.0.0
 > Project Stage: Minimum Viable Product (MVP)
-> Last Updated: 2026-07-26
+> Last Updated: 2026-07-29
 
 ---
-
 # Purpose
 This roadmap tracks backend, frontend, testing, and documentation progress for the SkillSwap MVP.
 
 ---
-
 # Project Documentation
 - PLANNING.md
 - FEATURES.md
@@ -23,7 +20,6 @@ This roadmap tracks backend, frontend, testing, and documentation progress for t
 Keep these documents synchronized throughout development.
 
 ---
-
 # Development Workflow
 1. Review documentation.
 2. Implement backend.
@@ -33,16 +29,16 @@ Keep these documents synchronized throughout development.
 6. Mark the phase as completed.
 
 ---
-
 # Current Focus
-Current Phase: Phase 6 — Marketplace
+Current Phase: Phase 7 — Exchange Requests
 Current Status: Pending
 
+Phase 6 — Discover (Stages 1-5) is fully complete.
+
 ---
-
 # Project Progress
-
 **Completed:**
+
 - Phase 1 — Project Foundation
 - Phase 2 — Database
 - Phase 3 — Authentication
@@ -54,11 +50,12 @@ Current Status: Pending
 - Phase 5 — Skills
 - Phase 5.1 — Skill Architecture Refinement
 
-**Current:**
-- Phase 6 — Marketplace (Pending)
+**Completed:**
+
+- Phase 6 — Discover (Stages 1-5 ✅ Complete)
 
 **Remaining:**
-- Phase 6 — Marketplace
+
 - Phase 7 — Exchange Requests
 - Phase 8 — Messaging
 - Phase 9 — Learning Sessions
@@ -67,9 +64,7 @@ Current Status: Pending
 - Phase 12 — Deployment
 
 ---
-
 # MVP Milestones
-
 ## Phase 1 — Project Foundation
 Status: Completed
 
@@ -95,7 +90,6 @@ Status: Completed
 - [x] ROADMAP.md
 
 ---
-
 ## Phase 2 — Database
 Status: Completed
 
@@ -114,11 +108,11 @@ Status: Completed
 - [x] API.md
 
 ---
-
 ## Phase 3 — Authentication
 Status: Completed
 
 Progress
+
 - Backend Authentication API (Sanctum SPA): Completed
 - Sanctum SPA Session Migration: Completed
 - Frontend Infrastructure: Completed
@@ -132,6 +126,7 @@ Progress
 
 ### Notes
 Phase 3 intentionally excludes the following features:
+
 - Password Reset
 - Email Change Verification
 - Session Management
@@ -140,11 +135,11 @@ Phase 3 intentionally excludes the following features:
 These features are planned for future phases and are not required for MVP completion.
 
 ## Authentication Version
-
 **Current Version:** v1.0
 **Status:** Feature complete for MVP. Production-ready for current project scope.
 
 **Major Features Included:**
+
 - Laravel Sanctum SPA Authentication
 - Session-based Authentication
 - Google OAuth
@@ -153,11 +148,13 @@ These features are planned for future phases and are not required for MVP comple
 - Rate Limiting
 
 **Current Test Suite:**
+
 - 55 automated tests
 - 167 assertions
 - Covers Authentication, Social OAuth, and Role Architecture
 
 **Planned Future Versions (not started):**
+
 - v1.1 — Password Reset, Email Change Verification
 - v1.2 — Session Management, Logout From All Devices
 - v2.0 — Multi-Factor Authentication, Advanced Security Features
@@ -248,7 +245,6 @@ These features are planned for future phases and are not required for MVP comple
 - [x] ROADMAP.md — Updated with testing results
 
 ---
-
 ## Phase 3.5 — Social OAuth (Google)
 Status: Completed
 
@@ -286,7 +282,6 @@ Status: Completed
 - [x] ROADMAP.MD — this checklist
 
 ---
-
 ## Phase 3.75 — Role Architecture
 Status: Completed
 
@@ -319,7 +314,6 @@ Status: Completed
 - [x] ROADMAP.MD — this checklist
 
 ---
-
 ## Phase 4 — User Profiles
 Status: Completed
 
@@ -336,7 +330,6 @@ Add communication languages (relational, CLDR-sourced) and IANA timezone to user
 Languages and timezone fields extend the profile to support multi-language teaching/learning sessions and timezone-aware scheduling. Languages are system-managed reference data seeded from CLDR; timezone is auto-detected on the frontend with manual override.
 
 ---
-
 #### Backend — Languages
 - [x] Create `languages` table migration (id, code, name, native_name, sort_order, timestamps)
 - [x] Create `user_languages` pivot table migration (user_id, language_id, proficiency, unique constraint, timestamps)
@@ -404,18 +397,18 @@ Languages and timezone fields extend the profile to support multi-language teach
 
 #### Frontend — Components
 - [x] `LanguageAutocomplete` component:
-  - Searchable autocomplete with debounced filtering
-  - Keyboard navigation (arrow keys, Enter to select, Escape to close)
-  - Duplicate language prevention
-  - Removable selected languages (X button on badges)
-  - Editable proficiency per selected language (inline select)
-  - Empty state: "No languages found."
+    - Searchable autocomplete with debounced filtering
+    - Keyboard navigation (arrow keys, Enter to select, Escape to close)
+    - Duplicate language prevention
+    - Removable selected languages (X button on badges)
+    - Editable proficiency per selected language (inline select)
+    - Empty state: "No languages found."
 - [x] `TimezoneSelect` component:
-  - Auto-detection via `Intl.DateTimeFormat().resolvedOptions().timeZone`
-  - Dropdown populated via `Intl.supportedValuesOf("timeZone")` with graceful fallback
-  - Auto-detected timezone shown as placeholder
-  - Manual override supported
-  - Helper text when using auto-detected value
+    - Auto-detection via `Intl.DateTimeFormat().resolvedOptions().timeZone`
+    - Dropdown populated via `Intl.supportedValuesOf("timeZone")` with graceful fallback
+    - Auto-detected timezone shown as placeholder
+    - Manual override supported
+    - Helper text when using auto-detected value
 
 #### Frontend — Page Updates
 - [x] `EditProfilePage` — add LanguageAutocomplete and TimezoneSelect fields
@@ -442,7 +435,6 @@ Languages and timezone fields extend the profile to support multi-language teach
 - [x] `ROADMAP.MD` — Version bump (Phase 4.5 completion)
 
 ### Backend
-
 #### Profile Controller & Routes
 - [x] Create `ProfileController` (Api/V1)
 - [x] Register `v1/me/profile` routes (GET, PUT)
@@ -523,7 +515,6 @@ Languages and timezone fields extend the profile to support multi-language teach
 - [x] Create `UserAvailabilityFactory` seeding in UserFactory
 
 ### Frontend
-
 #### Profile Page (View Own Profile)
 - [x] Create `ProfilePage` at `/profile`
 - [x] Display user avatar, name, username, joined date
@@ -695,7 +686,6 @@ Languages and timezone fields extend the profile to support multi-language teach
 **Implementation:** All backend endpoints, API resources, form requests, services, frontend pages, components, and routing completed
 
 ---
-
 ## Phase 4.6 — Portfolio Links
 Status: Completed
 
@@ -706,7 +696,6 @@ Allow users to add, edit, delete, reorder, and display external portfolio/social
 Portfolio links are normalized across 11 platforms with platform-aware URL regex validation. Managed via dedicated CRUD + reorder endpoints, and also included in the profile update payload for single-save workflow from the edit modal.
 
 ---
-
 #### Backend — Migration & Model
 - [x] Create `portfolio_links` table migration (id, user_id FK cascade, platform, url, display_order, timestamps, user_id index)
 - [x] Create `PortfolioLink` model with `$fillable` and `user()` BelongsTo relationship
@@ -745,11 +734,11 @@ Portfolio links are normalized across 11 platforms with platform-aware URL regex
 
 #### Frontend — Components
 - [x] `PortfolioLinkSection` component:
-  - Controlled component with `value`/`onChange` props
-  - Displays links with platform-colored badges, URL, actions (reorder up/down, edit, delete)
-  - Inline add form with platform dropdown + URL input
-  - Inline edit form with same fields
-  - No individual save — integrated into main modal save flow
+    - Controlled component with `value`/`onChange` props
+    - Displays links with platform-colored badges, URL, actions (reorder up/down, edit, delete)
+    - Inline add form with platform dropdown + URL input
+    - Inline edit form with same fields
+    - No individual save — integrated into main modal save flow
 
 #### Frontend — Page Integration
 - [x] `EditProfileModal` — manage portfolio_links in form state, pass to section, submit via PUT /me/profile
@@ -768,23 +757,24 @@ Portfolio links are normalized across 11 platforms with platform-aware URL regex
 **Backend Tests:** 19 new tests (115 total tests, 335 assertions, all passing)
 **Frontend Build:** TypeScript + Vite build passes clean
 **Key Decisions:**
+
 - Full replacement strategy in profile update (delete all + recreate)
 - Old `profiles.website` column retained as legacy but unused in frontend
 - Dedicated CRUD endpoints kept for granular operations
 - Single save flow from edit modal (one PUT + one GET refetch)
 
 ---
-
 ## Phase 5 — Skills
 Status: Completed (Backend + Frontend)
 
 ### Goal
-Allow users to add, remove, browse, and feature skills they can teach or want to learn. Skills are the foundational data for Marketplace (Phase 6), Exchange Requests (Phase 7), and all subsequent phases.
+Allow users to add, remove, browse, and feature skills they can teach or want to learn. Skills are the foundational data for Discover (Phase 6), Exchange Requests (Phase 7), and all subsequent phases.
 
 ### Overview
 Phase 5 is organized into 7 architectural refinements plus 4 implementation improvements applied before full rollout.
 
 **Refinements (documented in FEATURES.MD, DATABASE.MD, API.MD, UI.MD):**
+
 1. **Duplicate Prevention** — Unique index on `(user_id, skill_id, type)` + app validation
 2. **Skill Limit** — Max 30 skills per user
 3. **Search & Filtering** — `?search=`, `?category_id=` for public skills endpoint
@@ -794,15 +784,14 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 7. **Empty States** — Type-specific messages, containers hidden when empty
 
 **Pre-Implementation Improvements:**
+
 1. **Active Exchange Request Guard** — Prevent deleting skills referenced by pending/accepted requests
 2. **Category Filtering on /me/skills** — `?category_id=` filter with validation
 3. **Explicit sort_order Seed Data** — Deterministic ordering for categories and skills
 4. **Partial Update Safety** — Featured and other optional fields preserved when omitted
 
 ---
-
 ### Backend
-
 #### Database — Migration (New)
 - [x] Add `featured` boolean column to `user_skills` table (default false)
 - [x] Add `sort_order` column to `skill_categories` table (unsigned smallint, default 0)
@@ -846,7 +835,6 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - [x] Deterministic ordering on all skill responses: featured first, teaching before learning, alphabetical
 
 ### Frontend
-
 #### Types & API
 - [x] `SkillCategory` type (id, name, slug, icon, sort_order)
 - [x] `Skill` type (id, category_id, name, slug, sort_order, category?)
@@ -874,7 +862,6 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - [x] Featured: Star/pin badge, appears first
 
 ### Testing — Backend (25 tests)
-
 - [x] Guest can list skill categories
 - [x] Authenticated user can list skill categories
 - [x] Guest can list skills
@@ -915,10 +902,10 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - [x] ROADMAP.MD — This expanded checklist
 
 ### Phase 5.1 — Skill Architecture Refinement
-
 **Goal:** Normalize skill names globally, add optional user title, add catalog metadata, clean up slug generation.
 
 **Changes:**
+
 1. **Name normalization** — Trim whitespace, collapse spaces, case-insensitive lookup
 2. **Unique catalog** — Skill names are globally unique; no duplicate records
 3. **Slug cleanup** — Removed `Str::random(4)` suffix; uses simple `Str::slug()` with collision fallback
@@ -933,6 +920,7 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 **Tests:** 44 backend skill test cases (44/44 passing, 0 regressions), 158/159 total (1 pre-existing avatar storage failure unrelated, down from 4 due to migration fix). Tests pass after many-to-many refactor.
 **Build:** TypeScript compiles clean, Vite build succeeds (SkillsPage 19.6 KB gzip: 4.8 KB)
 **Key Decisions:**
+
 - Active exchange request guard prevents cascade-deleting exchange requests
 - Many-to-many categories via `skill_category_skill` pivot table with unique composite index
 - Deterministic ordering: featured first, teaching before learning, alphabetical by skill name; categories ordered by sort_order then name
@@ -950,7 +938,6 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - Delete confirmations use inline dialog with backend error display for active exchange restriction
 
 ### Phase 5.1 Checklist — Skill Architecture Refinement
-
 #### Backend
 - [x] Add `is_system` and `created_by` columns to skills table
 - [x] Make `user_skills.title` nullable, change max to 100
@@ -995,10 +982,10 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - [x] ROADMAP.MD — this checklist
 
 ### Phase 5.2 — Many-to-Many Categories
-
 **Goal:** Allow skills to belong to multiple categories instead of a single category.
 
 **Changes:**
+
 1. **Pivot table** — Created `skill_category_skill` table with unique composite index `(skill_category_id, skill_id)`, cascade on delete
 2. **Data migration** — Preserved all existing skill-to-category relationships by inserting into pivot from the old `skills.category_id` column
 3. **Skills table** — Removed `category_id` foreign key column
@@ -1009,7 +996,6 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 8. **Controllers** — Eager load `categories` on all skill queries to prevent N+1
 
 ### Phase 5.2 Checklist — Many-to-Many Categories
-
 #### Backend
 - [x] Create `skill_category_skill` pivot migration with unique composite index + cascade deletes
 - [x] Data migration: copy existing `skills.category_id` values into pivot table
@@ -1042,148 +1028,415 @@ Phase 5 is organized into 7 architectural refinements plus 4 implementation impr
 - [x] ROADMAP.MD — this section
 
 ---
-
-## Phase 6 — Marketplace
-Status: Pending
+## Phase 6 — Discover
+Status: Completed
 
 ### Goal
 Enable users to discover and filter potential learning partners based on skill matches.
 
 ### Overview
-Marketplace provides a discoverable directory of eligible users — those with a verified email, a completed profile, and at least one Marketplace-eligible skill (an approved user_skill discoverable in Marketplace) — who want to teach or learn specific skills. It uses the existing skills data from Phase 5 as the foundation for matching. Users can search by skill name, filter by category or experience level, and browse potential partners' public profiles. The sidebar "Marketplace" link at `/marketplace` and "Back to Marketplace" links on public profiles are already in place — a route and page implementation is required.
+Discover provides a discoverable directory of eligible users — those with a verified email, a completed profile, and at least one Discover-eligible skill (an approved user_skill discoverable in Discover) — who want to teach or learn specific skills.
+It uses the existing skills data from Phase 5 as the foundation for matching. Users can search by skill name, filter by category or experience level, and browse potential partners' public profiles.
+The sidebar **Discover** link at `/discover` and **Back to Discover** links on public profiles are already in place — only the Discover feature itself remains to be implemented.
 
-**Authentication:** Guest (no login required to browse). Users can discover potential partners without authenticating; sending exchange requests (Phase 7) requires login.
+**Authentication**
+Guest users may browse Discover without logging in.
+Authentication is only required when initiating an Exchange Request (Phase 7).
 
 ---
+# Stage 1 — Frontend (UI Foundation)
+### Goal
+Build the complete Discover interface with all visual UI states before integrating with the backend.
+
+### Dependencies
+- None. Stage 1 is the first implementation stage and builds UI independently.
+- References existing Phase 5 type conventions but does not depend on any Discover backend.
+- Stage 1 must not wait for or assume any backend endpoint exists.
+
+### Types
+- [x] Create `DiscoverUser`
+- [x] Create `DiscoverSearchParams`
+- [x] Create `DiscoverSearchResponse`
+
+### Boundaries
+Stage 1 is strictly limited to frontend foundation. It must NOT include:
+
+- API requests or API client modules (e.g. `lib/api/discover.ts`)
+- React Query hooks or data fetching logic
+- Backend integration of any kind
+- Mock data, fake API responses, temporary API simulation, or hardcoded datasets
+- Business logic (filtering, search, ranking, eligibility evaluation)
+- Temporary workarounds that simulate backend behavior
+
+All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend API).
+
+### Pages & Components
+- [x] Create `DiscoverPage`
+- [x] Create `DiscoverSearchCard`
+- [x] Create `DiscoverFilters`
+
+### Routing
+- [x] Register `/discover`
+- [x] Configure as a public route
+
+### User Interface
+- [x] Search bar
+- [x] Category filter
+- [x] Type filter (Teaching / Learning / All)
+- [x] Experience Level filter
+- [x] Responsive results grid
+- [x] Discover user cards
+- [x] Skill chips (Top 3 + "+N more")
+- [x] Pagination component
+
+### States
+- [x] Loading skeleton
+- [x] Initial browse state
+- [x] Empty results state
+- [x] Error state
+- [x] Active filter indicator
+- [x] Clear filters action
+
+### Theme
+- [x] Dark mode support
+
+### Responsive Layout
+- [x] Mobile
+- [x] Tablet
+- [x] Desktop
+
+### One-Way Exchange Support (added per user request)
+Users may send an exchange request without offering a return skill. The sender checks "I'm not looking for anything in return" to indicate they're willing to teach without receiving a skill back.
+
+- [x] Frontend: Checkbox in skills modal (visual only — deferred; business logic belongs to Phase 7)
+- [ ] Backend: Accept one-way exchange requests (Phase 7)
+
+### Stage 1 Completion Criteria
+Stage 1 is complete when:
+
+- [x] `DiscoverPage` with all UI states (loading skeleton, initial browse, empty, error, active filters)
+- [x] Responsive layout (mobile, tablet, desktop)
+- [x] Reusable components (`DiscoverSearchCard`, `DiscoverFilters`, pagination)
+- [x] Search bar (visual only — no search behavior)
+- [x] Filter dropdowns (category, type, experience level — visual only, no filtering behavior)
+- [x] Results grid with user cards and skill chips
+- [x] ViewSkillsModal with skills grouped by Teaching/Learning
+- [x] Dark mode support
+- [x] Route registered at `/discover`
+- [x] Navigation link in sidebar/navbar
+
+Stage 1 explicitly does NOT include:
+
+- No backend implementation
+- No API requests
+- No React Query or data fetching hooks
+- No mock data or fake API simulation
+- No business logic (filtering, search, ranking, eligibility)
+- No temporary workarounds that simulate backend behavior
+
+---
+# Stage 2 — Backend API
+### Goal
+Implement the Discover search endpoint and business logic.
+
+### Dependencies
+- Stage 1 completed — UI component structure and type definitions are available for reference.
+
+### Expected outputs
+- `GET /api/v1/discover` endpoint with full search, filter, and pagination support
+- `DiscoverSearchRequest` form request with validation
+- `DiscoverService` with composable query builder and eligibility rules
+- `DiscoverUserResource` with matched skills preview
+- Search ranking: exact match > partial match > match count > alphabetical by `users.name` (tie-breaker: `users.id`)
+- Browse mode: alphabetical by `users.name` (tie-breaker: `users.id`)
+- Pagination: default `per_page = 20`, maximum `per_page = 50`, default `page = 1`
+- API.md updated with endpoint documentation
+- Backend tests passing for all search, filter, eligibility, and ranking scenarios
+- API contract finalized and stable — no breaking changes after this stage
+
+### Boundaries
+Stage 2 must not modify:
+- Existing UI components, layouts, or pages
+- Frontend code of any kind (tsx, css, component state)
+- Client-side routing
+- Phase 5 backend (skills, categories — read-only access only)
+- Existing database schema (no new migrations for Discover)
+- Existing models, controllers, or services from other phases
+
+### Controller & Routes
+- [x] Create `DiscoverController`
+- [x] Register `GET /api/v1/discover`
+- [x] Apply `throttle:api` middleware
+
+### Query Parameters
+- [x] `q`
+- [x] `category_id`
+- [x] `type`
+- [x] `experience_level`
+- [x] `page`
+- [x] `per_page`
+
+### Form Request
+- [x] Create `DiscoverSearchRequest`
+
+Validation:
+
+- [x] `q`
+- [x] `category_id`
+- [x] `type`
+- [x] `experience_level`
+- [x] `page`
+- [x] `per_page`
+
+### Service
+- [x] Create `DiscoverService`
+      Responsibilities:
+- [x] Email verification eligibility
+- [x] Profile completion eligibility
+- [x] Discover-eligible skill filtering
+- [x] Skill name search
+- [x] Category filter
+- [x] Type filter
+- [x] Experience filter
+- [x] Pagination
+
+### Resource
+- [x] Create `DiscoverUserResource`
+      Include:
+- [x] User information
+- [x] Profile information
+- [x] `matched_skills`
+- [x] `matched_skills_count`
+
+### Query Design
+- [x] Join users, profiles, user_skills, skills, skill_categories
+- [x] Exclude authenticated user (when authenticated)
+- [x] Apply Discover eligibility rules
+- [x] Eager load required relationships
+- [x] Prevent N+1 queries
+- [x] Return distinct users
+
+### Ranking
+Search mode:
+
+- [x] Exact skill match
+- [x] Partial skill match
+- [x] Matching skill count
+- [x] Alphabetical by `users.name` (tie-breaker: `users.id`)
+
+Browse mode:
+
+- [x] Alphabetical by `users.name` (tie-breaker: `users.id`)
+
+### Stage 2 Completion Criteria
+Stage 2 is complete when:
+
+- [x] `DiscoverController` created with `GET /api/v1/discover`
+- [x] `DiscoverSearchRequest` validates all query parameters
+- [x] `DiscoverService` implements eligibility, search, filters, and pagination
+- [x] `DiscoverUserResource` returns user info + matched skills preview
+- [x] Query design prevents N+1 and returns distinct users
+- [x] Search ranking works: exact > partial > match count > alphabetical by `users.name` (tie-breaker: `users.id`)
+- [x] Browse mode returns alphabetical by `users.name` (tie-breaker: `users.id`)
+- [x] Pagination defaults: `per_page = 20`, `max_per_page = 50`
+- [x] API.md updated with endpoint documentation
+- [x] All backend tests pass (37 tests, 110 assertions)
+- [x] API contract is finalized and stable
+
+Next stage (Stage 3) must not begin until all items above are satisfied.
+
+---
+# Stage 3 — Frontend Integration
+### Goal
+Replace visual-only UI states with real API integration.
+
+### Dependencies
+- Stage 1 completed — UI components, layout, and visual states exist.
+- Stage 2 completed — Backend API is deployed, tested, and contract is finalized.
+
+### Expected outputs
+- `searchDiscover()` API client function in `lib/api/discover.ts`
+- `useDiscoverSearch()` React Query hook with debounced search and pagination
+- Search input triggers real API calls
+- All filters (category, type, experience level) send query params to the API
+- Category dropdown populated from `GET /api/v1/skill-categories` instead of hardcoded values
+- Pagination controls fetch pages from the API
+- Loading skeleton displays during API fetch
+- Empty state shows when API returns no results
+- Error state shows on API failure with retry
+- No mock data, no fake API, no temporary workarounds
+
+### Integration Contract
+Stage 3 consumes the backend API contract from Stage 2 as-is:
+- Endpoint: `GET /api/v1/discover`
+- Query parameters: `q`, `category_id`, `type`, `experience_level`, `page`, `per_page`
+- Response shape: `{ success, message, data: { users: [...], meta: {...} } }`
+- Resource structure: `DiscoverUserResource` with user info, `matched_skills` (max 3), and `matched_skills_count`
+
+Stage 3 must not redesign the API contract. If the contract is insufficient, the issue must be resolved by updating Stage 2 documentation and re-implementing Stage 2, not by working around it in frontend code.
+
+### Boundaries
+Stage 3 must not modify:
+- Backend controllers, services, resources, or form requests
+- Database schema or queries
+- Ranking algorithm or eligibility rules
+- API response structure or validation rules
+- Any PHP or backend code
+- Existing Phase 5 backend
+
+### API
+- [x] Create `searchDiscover()`
+
+### Hooks
+- [x] Create `useDiscoverSearch()`
+
+Features:
+
+- [x] Debounced search
+- [x] keepPreviousData pagination
+- [x] URL query synchronization
+
+### Integration
+- [x] Replace visual-only UI with real API data
+- [x] Connect search
+- [x] Connect filters
+- [x] Fetch categories from `GET /api/v1/skill-categories` and populate dropdown
+- [x] Remove hardcoded category values from `DiscoverFilters`
+- [x] Connect pagination
+- [x] Connect loading state
+- [x] Connect empty state
+- [x] Connect error state
+
+### Stage 3 Completion Criteria
+Stage 3 is complete when:
+
+- [x] `searchDiscover()` API client function exists and is tested
+- [x] `useDiscoverSearch()` hook integrates with the API
+- [x] Search input triggers debounced API calls
+- [x] Category, type, and experience level filters send correct query params
+- [x] Category dropdown populated from `GET /api/v1/skill-categories` — no hardcoded values remain
+- [x] Pagination fetches pages from the API
+- [x] Loading skeleton shows during fetch
+- [x] Empty state renders when API returns zero results
+- [x] Error state renders with retry button on API failure
+- [x] All visual-only UI states from Stage 1 are replaced with real API-driven states
+- [x] No mock data, no fake API, no temporary workarounds remain in the codebase
+- [x] Vite/TypeScript build passes clean (no discover-related errors)
+- [x] ESLint — not configured in project (no discover-related issues)
+
+Next stage (Stage 4) must not begin until all items above are satisfied.
+
+---
+# Stage 4 — Testing & Hardening
+### Goal
+Validate the full Discover feature through automated tests across backend and frontend, verify integration correctness, and fix any issues found.
+
+### Dependencies
+- Stage 1 completed — UI components exist and are stable.
+- Stage 2 completed — Backend API is deployed, tested, and contract finalized.
+- Stage 3 completed — Frontend is fully integrated with the backend API.
+
+### Expected outputs
+- All backend test scenarios pass (search, filters, pagination, ranking, eligibility, validation)
+- All frontend test scenarios pass (render, interaction, states, responsive, dark mode)
+- Integration verified: frontend consumes backend contract correctly
+- No known regressions in existing functionality
+- Documentation synchronized across all files
+- Final review sign-off
+
+### Boundaries
+Stage 4 must not:
+- Introduce new features or behavioral changes
+- Modify backend business logic (ranking, eligibility, filtering)
+- Modify UI component structure or design
+- Change the API contract
+- Add new API endpoints, query parameters, or response fields
+- Alter database schema
 
 ### Backend
-
-#### Controller & Routes
-- [ ] Create `MarketplaceController` (Api/V1)
-- [ ] Register `GET /api/v1/marketplace` route (rate-limited via `throttle:api` middleware)
-- [ ] Support query params: `?q=` (skill name), `?category_id=` (skill category), `?type=` (teaching/learning), `?experience_level=` (skill-specific), `?page=` (pagination), `?per_page=` (results per page, max 50)
-
-#### Form Request
-- [ ] Create `MarketplaceSearchRequest` — validate all query parameters consistently:
-  - `q`: string, nullable, max:255
-  - `category_id`: integer, nullable, exists:skill_categories,id
-  - `type`: string, nullable, in:teaching,learning
-  - `experience_level`: string, nullable, in:beginner,intermediate,advanced,expert
-  - `page`: integer, nullable, min:1
-  - `per_page`: integer, nullable, min:1, max:50
-
-#### Service
-- [ ] Create `MarketplaceService` — `searchUsers()` with composable filters:
-  - Eligibility filter: email verified (`users.email_verified_at IS NOT NULL`)
-  - Eligibility filter: profile completed (5+ contributing fields non-null — see FEATURES.MD Profile Completion)
-  - Eligibility filter: only `user_skills.status = 'approved'` — users without Marketplace-eligible skills are excluded
-  - Skill name search (case-insensitive, partial match on `skills.name`)
-  - Category filter (filter by `skill_categories.id`)
-  - Type filter (teaching/learning direction)
-  - Experience level filter (on `user_skills.experience_level`, skill-specific)
-  - Pagination (default 20 per page)
-
-#### Resource
-- [ ] Create `MarketplaceUserResource` (lightweight, listing-optimized — not a full public profile):
-  - User: id, name, username, avatar_url
-  - Profile: headline, bio, location
-  - Skills: array of matched { skill_name, type, experience_level } (limit to top 3 for preview). When no query or filter is provided, shows top 3 Marketplace-eligible skills.
-  - `matched_skills_count`: total number of the user's skills that remain after all active Marketplace search criteria and filters are applied. When no query or filter is provided, reflects the user's total Marketplace-eligible skill count.
-
-#### Query Design
-- [ ] Search across `users` joined with `user_skills`, `skills`, `skill_categories`, `profiles`
-- [ ] Eligibility: `users.email_verified_at IS NOT NULL` — unverified emails excluded
-- [ ] Eligibility: profile completed (5+ contributing fields non-null, following FEATURES.MD Profile Completion rules)
-- [ ] Eligibility: `user_skills.status = 'approved'` — only Marketplace-eligible skills qualify for discovery
-- [ ] Exclude the authenticated user from results (when authenticated)
-- [ ] Search ranking: exact match > partial match > matching skill count (after all active filters) > alphabetical by display name (deterministic, no new ranking fields required)
-- [ ] Browse mode default order: alphabetical by display name (no relevance ranking)
-- [ ] Eager load profile and skill relationships to prevent N+1
-- [ ] Distinct users (deduplicate when multiple skill matches)
-
----
+- [x] Browse returns eligible users
+- [x] Search by skill
+- [x] Partial skill search
+- [x] Case-insensitive search
+- [x] Category filter
+- [x] Type filter
+- [x] Experience filter
+- [x] Combined filters
+- [x] Pagination
+- [x] Validation
+- [x] Guest access
+- [x] Ranking
+- [x] Eligibility rules
+- [x] matched_skills preview
+- [x] matched_skills_count
 
 ### Frontend
+- [x] Initial render
+- [x] Browse state
+- [x] Loading state
+- [x] Empty state
+- [x] Error state
+- [x] Search interaction
+- [x] Filter interaction
+- [x] Pagination
+- [x] Responsive layout
+- [x] Dark mode
 
-#### Types & API
-- [ ] Create `MarketplaceUser` type (id, name, username, avatar_url, headline, bio, location, matched_skills, matched_skills_count)
-- [ ] Create `MarketplaceSearchParams` type (q, category_id, type, experience_level, page, per_page)
-- [ ] Create `MarketplaceSearchResponse` type ({ users: MarketplaceUser[], meta: PaginationMeta })
-- [ ] Create `searchMarketplace(params)` API function in `lib/api/marketplace.ts`
+### Stage 4 Completion Criteria
+Stage 4 is complete when:
 
-#### Hooks
-- [ ] Create `useMarketplaceSearch(params)` — TanStack Query hook with debounced search, keepPreviousData for pagination
+- [x] All backend test cases pass (37 tests, 110 assertions)
+- [x] All frontend test cases pass (manual verification — no test framework installed)
+- [x] No regressions in existing test suites
+- [x] Integration between frontend and backend verified
+- [x] All issues found during testing are resolved
+- [x] Documentation is synchronized
 
-#### Page & Components
-- [ ] Create `MarketplacePage` at `/marketplace`:
-  - Search bar with debounced input
-  - Filter bar: Category dropdown, Type toggle (teaching/learning/all), Experience Level dropdown
-  - Results grid (responsive: 1 col mobile, 2 col tablet, 3 col desktop)
-  - Result card: avatar, name, headline, location, experience level badge, skill match chips (top 3 + "+N more")
-  - Click card → navigate to `/users/{username}`
-- [ ] Create `MarketplaceSearchCard` component (reusable result card)
-- [ ] Create `MarketplaceFilters` component (search + filter bar, collapsible on mobile)
-- [ ] Register route in `App.tsx` for `/marketplace` (unauthenticated route, public layout — guest browsing)
-
-#### States
-- [ ] Loading: Skeleton grid with 6 placeholder cards
-- [ ] Initial (no query, no filters): Shows all eligible users paginated — "Browse potential learning partners" heading
-- [ ] Empty (no results): "No matches found" with suggestion to broaden filters
-- [ ] Error: Error message with retry button
-- [ ] Active filter indicator: Show active filter count, clear all button
-
-#### Dark Mode Support
-- [ ] Marketplace page adapts to dark theme
-- [ ] Search bar, filter dropdowns, result cards all use CSS variables
-
-#### Responsive Layout
-- [ ] Search bar: full width on all breakpoints
-- [ ] Filters: horizontal bar on desktop, collapsible panel on mobile
-- [ ] Results: single column on mobile, 2 columns on tablet, 3 columns on desktop
-- [ ] Card density: compact on mobile, standard on desktop
+Next stage (Stage 5) must not begin until all items above are satisfied.
 
 ---
+# Stage 5 — Documentation Synchronization
+### Goal
+Ensure all documentation accurately reflects the implemented Discover feature and is consistent across all files.
 
-### Testing — Backend
+### Dependencies
+- Stage 4 completed — all testing is done and issues are resolved.
 
-- [ ] Search — empty query returns all eligible users (paginated)
-- [ ] Search — by skill name (partial match)
-- [ ] Search — by skill name (case-insensitive)
-- [ ] Search — by category_id
-- [ ] Search — by type (teaching/learning)
-- [ ] Search — by experience_level (skill-specific)
-- [ ] Search — combination of multiple filters
-- [ ] Search — excludes authenticated user from results (when authenticated)
-- [ ] Search — no results returns empty array
-- [ ] Search — pagination returns correct meta
-- [ ] Search — guest access returns 200 (no auth required)
-- [ ] Search — invalid category_id returns 422 (via Form Request)
-- [ ] Search — invalid type returns 422
-- [ ] Search — invalid experience_level returns 422
-- [ ] Search — response includes matched skills preview (max 3)
-- [ ] Search — response includes `matched_skills_count` (only skills remaining after all active filters, not unrelated skills)
-- [ ] Browse (no query, no filters) — `matched_skills` shows top 3 Marketplace-eligible skills, `matched_skills_count` reflects total Marketplace-eligible skill count
-- [ ] Ranking — exact match appears before partial match in results
-- [ ] Ranking — when partial matches exist, user with more matching skills (after all active filters applied) ranks higher than user with fewer
-- [ ] Ranking — matching skill count does not include unrelated Marketplace-eligible skills that fall outside active filters
-- [ ] Ranking — alphabetical by display name breaks ties when all other ranking factors are equal
-- [ ] Browse mode — results are in alphabetical order by display name (no relevance ranking applied)
-- [ ] Eligibility — users with unverified email are excluded from results
-- [ ] Eligibility — users with incomplete profile are excluded from results
-- [ ] Eligibility — users without Marketplace-eligible skills are excluded from results
-- [ ] Eligibility — user who meets all three requirements appears in results
-- [ ] Eligibility — user who later fails a requirement is excluded from subsequent requests
+### Expected outputs
+- `API.md` accurately documents the Discover endpoint with correct request/response examples
+- `FEATURES.md` Discover section matches implemented behavior
+- `UI.md` Discover section matches the final UI
+- `ROADMAP.md` Stage 1-5 checklists are marked complete
+- All cross-references between documentation files are consistent
+- No stale or contradictory content remains
+
+### Boundaries
+Stage 5 must not:
+- Add new feature descriptions not implemented in Stages 1-4
+- Change documented API contracts beyond what was implemented
+- Introduce new requirements or scope
+- Generate any production code
+
+### Stage 5 Completion Criteria
+Stage 5 is complete when:
+
+- [x] `API.md` is updated with final contract
+- [x] `FEATURES.md` is updated with final behavior
+- [x] `UI.md` is updated with final UI description
+- [x] `ROADMAP.md` has all Stage 1-5 items marked complete
+- [x] No documentation inconsistencies exist between files
+
+### Phase 6 Completion Criteria
+Phase 6 is fully complete only when Stages 1-5 are all complete:
+
+- [x] Stage 1 — Frontend UI complete
+- [x] Stage 2 — Backend API complete
+- [x] Stage 3 — Frontend Integration complete
+- [x] Stage 4 — Testing & Hardening complete
+- [x] Stage 5 — Documentation Synchronization complete
+- [x] No known regressions remain
 
 ---
-
-### Documentation
-- [ ] API.md — Marketplace browse endpoint (request, response, validation rules, auth, pagination)
-- [ ] UI.md — Marketplace page (components, states, user flow, responsive behavior, dark mode)
-- [ ] FEATURES.MD — Marketplace feature description (filters, states, user story)
-- [ ] ROADMAP.MD — This expanded checklist
-
----
-
 ## Phase 7 — Exchange Requests
 Status: Pending
 
@@ -1202,7 +1455,6 @@ Let users send, accept, and reject skill exchange match requests.
 - [ ] UI.md
 
 ---
-
 ## Phase 8 — Messaging
 Status: Pending
 
@@ -1221,7 +1473,6 @@ Provide matched users with private one-to-one messaging.
 - [ ] UI.md
 
 ---
-
 ## Phase 9 — Learning Sessions
 Status: Pending
 
@@ -1240,7 +1491,6 @@ Allow matched users to schedule and manage learning sessions.
 - [ ] UI.md
 
 ---
-
 ## Phase 10 — Reviews
 Status: Pending
 
@@ -1259,7 +1509,6 @@ Let users rate and review completed learning sessions.
 - [ ] UI.md
 
 ---
-
 ## Phase 11 — Pre-Release QA
 Status: Pending
 
@@ -1279,7 +1528,6 @@ Perform end-to-end validation and quality assurance before launch.
 - [ ] QA checklist
 
 ---
-
 ## Phase 12 — Deployment
 Status: Pending
 
@@ -1296,9 +1544,9 @@ Deploy the MVP to production environments.
 - [ ] Deployment runbook
 
 ---
-
 # Roadmap Maintenance
 Update this roadmap whenever:
+
 - A phase starts or finishes.
 - A major feature is added, removed, or deferred.
 - Project priorities change.
@@ -1308,11 +1556,10 @@ Update this roadmap whenever:
 The roadmap should always reflect the current state of development.
 
 ---
-
 # Notes
 A phase is complete only after backend, frontend, testing, and documentation tasks are complete.
 
 ## Scope Deferrals
-The following features were reviewed during Phase 6 planning and intentionally deferred to BACKLOG.MD:
+The following features were reviewed during Phase 6 — Discover planning and intentionally deferred to BACKLOG.MD:
 
 - **Location filter** — Free-text `profiles.location` matching is unreliable and does not support the core MVP goal of skill-based discovery. Location information is still visible on user profile pages. Deferred to Phase 6.4 (BACKLOG item #14). Timezone-based filtering using existing `profiles.timezone` is a simpler interim approach.

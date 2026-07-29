@@ -24,7 +24,7 @@ import { useAuthStore } from "@/stores/authStore"
 
 const sidebarLinks = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Marketplace", href: "/marketplace", icon: ShoppingBag },
+  { label: "Discover", href: "/discover", icon: ShoppingBag },
   { label: "My Skills", href: "/skills", icon: Users },
   { label: "Exchange Requests", href: "/exchange-requests", icon: User },
   { label: "Messages", href: "/messages", icon: MessageSquare },
@@ -43,15 +43,15 @@ export function AuthenticatedLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-64 flex-col border-r bg-card lg:flex">
-        <div className="flex h-16 items-center border-b px-6">
+    <div className="flex h-screen overflow-hidden">
+      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
+        <div className="flex h-16 shrink-0 items-center border-b px-6">
           <Link to="/dashboard" className="text-lg font-bold">
             SkillSwap
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {sidebarLinks.map((link) => {
             const Icon = link.icon
             const isActive = location.pathname === link.href
@@ -157,8 +157,8 @@ export function AuthenticatedLayout() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b bg-background px-4 lg:hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden">
           <button
             type="button"
             className="text-muted-foreground hover:text-foreground"
@@ -232,10 +232,10 @@ export function AuthenticatedLayout() {
           </>
         )}
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
-        <footer className="flex items-center justify-center gap-1 border-t px-4 py-3 text-xs text-muted-foreground">
+        <footer className="flex shrink-0 items-center justify-center gap-1 border-t px-4 py-3 text-xs text-muted-foreground">
           made from <Heart className="size-3 fill-current text-red-500" />
         </footer>
       </div>

@@ -50,7 +50,7 @@ Pages:
 - Login
 - Register
 - Forgot Password
-- Marketplace
+- Discover
 - Public Profile
 
 ---
@@ -90,7 +90,7 @@ Pages:
 - Profile (/profile)
 - Public Profile (/users/:username)
 - My Skills
-- Marketplace
+- Discover
 - Exchange Requests
 - Conversations
 - Learning Sessions
@@ -104,7 +104,7 @@ Pages:
 ## Public Navigation
 
 - Home
-- Marketplace
+- Discover
 - Login
 - Register
 
@@ -121,7 +121,7 @@ Visible only to authenticated users with unverified email addresses.
 ## Authenticated Navigation
 
 - Dashboard
-- Marketplace
+- Discover
 - My Skills
 - Exchange Requests
 - Messages
@@ -152,7 +152,7 @@ Introduce SkillSwap to new users.
 
 - Register
 - Login
-- Browse Marketplace
+- Browse Discover
 
 ### APIs
 
@@ -285,7 +285,7 @@ GET /api/v1/conversations
 
 ---
 
-## Marketplace
+## Discover
 
 ### Purpose
 
@@ -293,39 +293,42 @@ Allow users to discover potential learning partners by browsing, searching, and 
 
 ### Route
 
-`/marketplace` (public, no auth required)
+`/discover` (public, no auth required)
 
 ### Components
 
 - Search Bar (debounced input, searches by skill name)
-- Category Filter (dropdown, populates from `GET /api/v1/skill-categories`)
+- Category Filter (dropdown populated from `GET /api/v1/skill-categories`)
 - Type Filter (toggle or select: All, Teaching, Learning)
 - Experience Level Filter (dropdown: beginner, intermediate, advanced, expert)
-- User Card (avatar, name, headline, location, matched skill chips with type + experience level badges — shows only skills matching current search criteria and active filters)
+- User Card (avatar, name, headline, location, matched skill chips with type + experience level badges — shows only skills matching current search criteria and active filters; clickable to open skills modal)
+- Skills Modal (displays all matched skills grouped by Teaching/Learning with experience badges; includes "Send Exchange Request" button and "I'm not looking for anything in return" checkbox for one-way teaching)
 - Pagination
 
 ### User Flow
 
-1. User navigates to `/marketplace`
+1. User navigates to `/discover`
 2. All eligible users are displayed in default ordering (paginated, alphabetical) — immediate browsing without searching. No relevance ranking is applied in browse mode.
 3. User can enter a skill name in the search bar to narrow results by skill match
 4. User can apply filters (category, type, experience level) independently without entering a search term, or combined with search
 5. Active filters are indicated with a count and a "Clear all" button
 6. Each user card shows up to 3 matched skill chips with "+N more" if additional matches exist
-7. Clicking a user card navigates to `/users/{username}` for the full public profile
-8. From the public profile, user can send an exchange request (Phase 7)
+7. Clicking a user card opens a modal showing all matched skills grouped by Teaching/Learning
+8. From the modal, user can send an exchange request (Phase 7, placeholder in Phase 6)
+9. The exchange request modal includes a "I'm not looking for anything in return" checkbox for one-way teaching (no return skill required)
+10. From the public profile, user can also send an exchange request (Phase 7)
 
 ### States
 
 - **Loading:** Skeleton grid with 6 placeholder cards (avatar circle + 3 text lines + badge placeholders)
 - **Initial (no query, no filters):** Shows all eligible users paginated with "Browse potential learning partners" heading. Users can start browsing immediately without entering any search term.
 - **Empty (no results):** "No matches found" message with suggestions to broaden filters or try a different search term.
-- **Error:** Error message with retry button if the API request fails.
+- **Error:** Error message with retry button.
 - **Active Filters:** Filter bar shows active filter count badge; "Clear all" button resets all filters to default.
 
 ### Dark Mode Support
 
-- All Marketplace components (search bar, filter dropdowns, user cards, pagination) adapt to dark theme using CSS variables.
+- All Discover components (search bar, filter dropdowns, user cards, pagination) adapt to dark theme using CSS variables.
 - Follows the same pattern as existing profile and skills pages.
 
 ### Responsive Layout
@@ -335,9 +338,11 @@ Allow users to discover potential learning partners by browsing, searching, and 
 - **Results grid:** Single column on mobile, 2 columns on tablet, 3 columns on desktop
 - **User cards:** Compact on mobile (smaller avatar, condensed text), standard sizing on desktop
 
-### APIs
+---
 
-GET /api/v1/marketplace
+### Stage Notes
+
+All stages complete. See `API.md` for the full endpoint specification.
 
 ---
 
@@ -473,7 +478,7 @@ Edit your personal profile information, languages, timezone, portfolio links, an
 
 ### Purpose
 
-Display another user's public information. Used when browsing the marketplace or viewing another user.
+Display another user's public information. Used when browsing discover or viewing another user.
 
 ### Route
 
@@ -495,7 +500,7 @@ Display another user's public information. Used when browsing the marketplace or
 
 - **Loading**: Skeleton while fetching
 - **Loaded**: Full public profile with user information
-- **Not Found**: "User not found" message with link back to marketplace
+- **Not Found**: "User not found" message with link back to discover
 - **No Bio**: Section hidden or shows "No bio yet"
 - **No Availability**: Section hidden
 
@@ -763,6 +768,9 @@ Manage account preferences.
 - Pagination
 - Search Bar
 - User Card
+- DiscoverSearchCard (clickable card with avatar, name, headline, location, skill chips, view profile link)
+- DiscoverFilters (search input, category/type/experience level selects, clear filters)
+- ViewSkillsModal (modal displaying all matched skills grouped by type with experience badges and exchange request button)
 - SkillCard
 - SkillBadge
 - FeaturedBadge

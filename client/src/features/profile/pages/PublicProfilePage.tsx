@@ -52,7 +52,7 @@ export default function PublicProfilePage() {
           {error instanceof Error ? error.message : "The user you're looking for does not exist."}
         </p>
         <Button variant="outline" className="mt-4" asChild>
-          <Link to="/marketplace">Back to Marketplace</Link>
+          <Link to="/discover">Back to Discover</Link>
         </Button>
       </div>
     )
@@ -84,7 +84,7 @@ export default function PublicProfilePage() {
       <Button variant="ghost" size="sm" className="mb-4" asChild>
         <Link to="/marketplace">
           <ArrowLeft className="mr-2 size-4" />
-          Back to Marketplace
+          Back to Discover
         </Link>
       </Button>
 

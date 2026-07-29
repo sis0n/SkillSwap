@@ -20,6 +20,7 @@ const OAuthCallbackPage = lazy(() => import("@/features/auth/pages/OAuthCallback
 const ProfilePage = lazy(() => import("@/features/profile/pages/ProfilePage"))
 const PublicProfilePage = lazy(() => import("@/features/profile/pages/PublicProfilePage"))
 const SkillsPage = lazy(() => import("@/features/skills/pages/SkillsPage"))
+const DiscoverPage = lazy(() => import("@/features/discover/pages/DiscoverPage"))
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((state) => state.initialize)
@@ -32,6 +33,27 @@ function AuthInit({ children }: { children: React.ReactNode }) {
   }, [initialize, isInitialized])
 
   return <>{children}</>
+}
+
+function DiscoverPageWrapper() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isInitialized = useAuthStore((state) => state.isInitialized)
+
+  if (!isInitialized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (isAuthenticated) {
+    return (
+      <AuthenticatedLayout />
+    )
+  }
+
+  return <PublicLayout />
 }
 
 function App() {
@@ -48,6 +70,10 @@ function App() {
               }
             >
               <Routes>
+                <Route path="discover" element={<DiscoverPageWrapper />}>
+                  <Route index element={<DiscoverPage />} />
+                </Route>
+
                 <Route element={<PublicLayout />}>
                   <Route element={<GuestRoute />}>
                     <Route index element={<Landing />} />

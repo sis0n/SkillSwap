@@ -22,6 +22,9 @@ export function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-4">
+          <Button variant="ghost" asChild>
+            <Link to="/discover">Discover</Link>
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {mode === "dark" ? (
               <Sun className="size-5" />

@@ -1599,15 +1599,15 @@ Delete a user skill. Only the owner can delete their skill.
 
 ---
 
-# Marketplace
+# Discover
 
 | Method | Endpoint      | Auth  |
 | ------ | ------------- | ----- |
-| GET    | /marketplace  | Guest |
+| GET    | /discover     | Guest |
 
-## GET /marketplace
+## GET /discover
 
-Browse and search potential learning partners. Returns a lightweight, paginated list of eligible users — those with a verified email, a completed profile, and at least one Marketplace-eligible skill — whose skills match the provided search criteria. No authentication required — anyone can discover potential partners.
+Browse and search potential learning partners. Returns a lightweight, paginated list of eligible users — those with a verified email, a completed profile, and at least one Discover-eligible skill — whose skills match the provided search criteria. No authentication required — anyone can discover potential partners.
 
 **Auth:** Guest (no authentication required)
 
@@ -1625,39 +1625,44 @@ Browse and search potential learning partners. Returns a lightweight, paginated 
 | per_page         | integer | No       | Results per page (default: 20, max: 50)        |
 
 **Examples:**
-- `GET /marketplace` — browse all eligible users (paginated)
-- `GET /marketplace?q=laravel` — search users by skill name
-- `GET /marketplace?q=laravel&type=teaching` — search with type filter
-- `GET /marketplace?category_id=1&experience_level=advanced` — filter by category + experience level
+- `GET /discover` — browse all eligible users (paginated)
+- `GET /discover?q=laravel` — search users by skill name
+- `GET /discover?q=laravel&type=teaching` — search with type filter
+- `GET /discover?category_id=1&experience_level=advanced` — filter by category + experience level
 
 **Success Response (200):**
 ```json
 {
   "success": true,
-  "message": "Marketplace retrieved.",
+  "message": "Discover retrieved.",
   "data": {
     "users": [
       {
         "id": 1,
-        "name": "John Doe",
+        "first_name": "John",
+        "middle_name": null,
+        "last_name": "Doe",
+        "suffix": null,
         "username": "johndoe",
         "avatar_url": "https://api.skillswap.com/storage/avatars/abc123.jpg",
         "headline": "Full-stack Developer & Mentor",
-        "bio": "Full-stack developer passionate about teaching.",
         "location": "Manila, Philippines",
         "matched_skills": [
           {
-            "skill_name": "Laravel",
+            "id": 5,
+            "name": "Laravel",
             "type": "teaching",
             "experience_level": "advanced"
           },
           {
-            "skill_name": "PHP",
+            "id": 3,
+            "name": "PHP",
             "type": "teaching",
             "experience_level": "intermediate"
           },
           {
-            "skill_name": "Vue.js",
+            "id": 7,
+            "name": "Vue.js",
             "type": "teaching",
             "experience_level": "intermediate"
           }
@@ -1676,20 +1681,20 @@ Browse and search potential learning partners. Returns a lightweight, paginated 
 ```
 
 **Notes:**
-- `matched_skills` contains only skills that match the current search criteria and active filters — not the user's full skill list. Limited to the top 3 matching skills for preview. When no query or filter is provided, `matched_skills` shows the user's top 3 Marketplace-eligible skills as a preview. The full skill list is available on the user's public profile.
-- `matched_skills_count` reflects the total number of the user's skills that remain after all active Marketplace search criteria and filters are applied. When no query or filter is provided, it reflects the user's total Marketplace-eligible skill count.
+- `matched_skills` contains only skills that match the current search criteria and active filters — not the user's full skill list. Limited to the top 3 matching skills for preview. When no query or filter is provided, `matched_skills` shows the user's top 3 Discover-eligible skills as a preview. The full skill list is available on the user's public profile.
+- `matched_skills_count` reflects the total number of the user's skills that remain after all active Discover search criteria and filters are applied. When no query or filter is provided, it reflects the user's total Discover-eligible skill count.
 - **Search ranking** (when `q` is provided) uses deterministic relevance-based priority. Ranking is calculated after all active filters have been applied — only matching skills influence the order:
    1. Exact skill name match — skills whose name matches the search term exactly rank highest
    2. Partial skill name match — skills whose name matches the search term partially
-   3. Number of matching skills — counted from the set of skills that remain after all active Marketplace search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Marketplace-eligible skills are not counted.
-   4. Alphabetical by display name — final deterministic tie-breaker
-- **Browse mode** (no `q` parameter) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by display name.
+   3. Number of matching skills — counted from the set of skills that remain after all active Discover search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Discover-eligible skills are not counted.
+   4. Alphabetical by `users.name` — final deterministic tie-breaker (`users.id`)
+- **Browse mode** (no `q` parameter) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by `users.name` (tie-breaker: `users.id`).
 - Search text is optional. Filters operate independently — users may browse using filters only.
 - The authenticated user (if logged in) is excluded from results.
 - Response uses Laravel's standard pagination meta structure.
 - `experience_level` in `matched_skills` is skill-specific (`user_skills.experience_level`), not profile-wide.
-- **Eligibility:** A user must satisfy all three requirements to appear in Marketplace: (1) email verified, (2) profile completed (5+ contributing fields — see FEATURES.MD Profile Completion), (3) at least one Marketplace-eligible skill. A Marketplace-eligible skill is a user_skill that is both approved and discoverable in Marketplace. For the MVP, all approved user skills are Marketplace-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension). Eligibility is evaluated automatically — no manual application or approval required. If a user later fails to satisfy any requirement, they are excluded from results until all requirements are met again.
-- The MVP ranking intentionally excludes advanced signals (endorsements, completed exchanges, profile completeness, popularity, activity, reputation, AI recommendations). These are deferred to future phases — see BACKLOG.MD (items #8, #10, #11) for roadmap details.
+- **Eligibility:** A user must satisfy all three requirements to appear in Discover: (1) email verified, (2) profile completed (5+ contributing fields — see FEATURES.MD Profile Completion), (3) at least one Discover-eligible skill. A Discover-eligible skill is a user_skill that is both approved and discoverable in Discover. For the MVP, all approved user skills are Discover-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension). Eligibility is evaluated automatically — no manual application or approval required. If a user later fails to satisfy any requirement, they are excluded from results until all requirements are met again.
+- The MVP ranking intentionally excludes advanced signals (endorsements, completed exchanges, profile completeness, popularity, activity, reputation, AI recommendations). These are deferred to future phases — see BACKLOG.MD (items #1, #10, #13) for roadmap details.
 
 **Error — Invalid category_id (422):**
 ```json
@@ -1723,6 +1728,40 @@ Browse and search potential learning partners. Returns a lightweight, paginated 
 | experience_level  | string, nullable, in:beginner,intermediate,advanced,expert |
 | page              | integer, nullable, min:1                 |
 | per_page          | integer, nullable, min:1, max:50         |
+
+---
+
+# Development Environment Notes
+
+## Discover Setup
+
+The following environment/setup issues have been encountered during development and are not application bugs:
+
+### Rate Limiter Registration
+The `api` rate limiter (60 requests/min per IP) is registered in `AppServiceProvider`. If the rate limiter reference is missing, requests to `GET /discover` fail with:
+```
+Rate limiter [App\Models\User::api] is not defined
+```
+
+### Docker Redis Hostname
+The `.env` file must use `REDIS_HOST=redis` (Docker service name, not `127.0.0.1`). Incorrect hostname causes:
+```
+Redis connection refused
+```
+
+### Pivot Table Migration
+The `skill_category_skill` pivot table must exist for discover filtering by `category_id`. Missing migration causes:
+```
+Base table or view not found: skill_category_skill relation does not exist
+```
+
+### Eligible Seed Data
+Fresh databases require eligible seeded users for Discover to return results. A user must satisfy all three requirements:
+1. Email verified
+2. Profile completion score ≥ 5
+3. At least one user_skill
+
+Without seeded data, the discover endpoint returns empty results (200 OK, `total: 0`).
 
 ---
 
@@ -1842,7 +1881,7 @@ Guest
 
 - Register
 - Login
-- Browse marketplace (`GET /marketplace`)
+- Browse discover (`GET /discover`)
 - View public profiles (`GET /users/{username}`)
 
 Authenticated User

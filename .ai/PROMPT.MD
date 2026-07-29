@@ -110,7 +110,7 @@ Update when necessary:
 Do not implement:
 
 - Skills
-- Marketplace
+- Discover
 - Exchange Requests
 - Messaging
 - Learning Sessions

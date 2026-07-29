@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthCheckController;
 use App\Http\Controllers\Api\V1\LanguageController;
+use App\Http\Controllers\Api\V1\Discover\DiscoverController;
 use App\Http\Controllers\Api\V1\Profile\PortfolioLinkController;
 use App\Http\Controllers\Api\V1\Profile\ProfileController;
 use App\Http\Controllers\Api\V1\Skills\SkillCategoryController;
@@ -27,6 +28,10 @@ Route::name('api.')
 
         Route::get('skills', [SkillController::class, 'index'])
             ->name('skills.index');
+
+        Route::get('discover', [DiscoverController::class, 'index'])
+            ->name('discover.index')
+            ->middleware('throttle:api');
 
         Route::prefix('auth')->group(function (): void {
 

@@ -1,6 +1,6 @@
 # SkillSwap API
 
-A skill exchange marketplace platform built with Laravel.
+A skill exchange discover platform built with Laravel.
 
 ## Tech Stack
 

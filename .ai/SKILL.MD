@@ -79,7 +79,7 @@ The MVP consists of the following modules:
 - Skill Categories
 - Skills
 - User Skills
-- Marketplace
+- Discover
 - Exchange Requests
 - Conversations
 - Messaging

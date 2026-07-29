@@ -2,8 +2,8 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "skillswap/backend",
     "type": "project",
-    "description": "SkillSwap - A skill exchange marketplace platform.",
-    "keywords": ["laravel", "skillswap", "marketplace"],
+    "description": "SkillSwap - A skill exchange discover platform.",
+    "keywords": ["laravel", "skillswap", "discover"],
     "license": "MIT",
     "require": {
         "php": "^8.4",

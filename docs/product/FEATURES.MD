@@ -11,7 +11,7 @@
 - Authentication
 - User Profiles
 - Skill Management
-- Skill Marketplace
+- Discover
 - Matching System
 - Messaging
 - Learning Sessions
@@ -288,10 +288,10 @@ These fields are guaranteed to exist for every user and therefore do not differe
 
 Profile completion rules are designed to support (but not constrain) the following future features:
 
-- **Onboarding prompts**: After registration, guide the user to complete their profile before browsing the marketplace. Show a progress bar or checklist of remaining fields.
+- **Onboarding prompts**: After registration, guide the user to complete their profile before browsing Discover. Show a progress bar or checklist of remaining fields.
 - **Trust signals**: Display a "Profile complete" badge on search results and public profiles. Incomplete profiles may appear lower in search rankings.
 - **Feature gating**: Require a complete profile before sending exchange requests. This ensures users have sufficient context about their learning partner before committing.
-- **Search ranking**: Boost complete profiles in marketplace search results. Filtering by completeness is a future option.
+- **Search ranking**: Boost complete profiles in discover search results. Filtering by completeness is a future option.
 
 #### When to Re-evaluate
 
@@ -386,7 +386,7 @@ A user can have a maximum of **30 skills** total. Attempting to add a 31st skill
 
 - Users can feature up to **3 skills**
 - Featured skills appear **first** on Profile and Public Profile
-- Marketplace continues using the full skill list (featured has no effect on search ranking)
+- Discover continues using the full skill list (featured has no effect on search ranking)
 - Enforced at the application validation layer
 
 #### Years of Experience
@@ -471,33 +471,48 @@ So others can discover me.
 
 ---
 
-# Skill Marketplace
+# Discover
 
 ## Description
 
-The marketplace allows users to discover potential learning partners. It is the entry point for the exchange workflow — users browse, search, filter, view profiles, and initiate exchange requests. Only users who satisfy all Marketplace eligibility requirements appear in results.
+Discover allows users to find potential learning partners. It is the entry point for the exchange workflow — users browse, search, filter, view profiles, and initiate exchange requests. Only users who satisfy all Discover eligibility requirements appear in results.
 
 ### Features
 
-- Browse all eligible users (paginated, no search required)
-- Search by skill name (partial match, case-insensitive)
-- Filter by skill category
-- Filter by teaching/learning direction
-- Filter by skill-specific experience level
-- View matched skills preview — only skills matching the current search criteria and active filters (top 3 + count)
-- View user profile (navigate to `/users/{username}`)
-- Initiate exchange request (Phase 7)
+| Feature | Stage |
+| ------- | ----- |
+| Browse all eligible users (paginated, no search required) | Stage 3 (Frontend Integration) |
+| Search by skill name (partial match, case-insensitive) | Stages 2+3 (Backend API + Integration) |
+| Filter by skill category | Stages 2+3 (Backend API + Integration) |
+| Filter by teaching/learning direction | Stages 2+3 (Backend API + Integration) |
+| Filter by skill-specific experience level | Stages 2+3 (Backend API + Integration) |
+| View matched skills preview — only skills matching the current search criteria and active filters (top 3 + count) | Stages 2+3 (Backend API + Integration) |
+| View user profile (navigate to `/users/{username}`) | Stage 1 (UI) |
+| Initiate exchange request | Phase 7 |
+| One-way exchange support — visual checkbox in skills modal | Stage 1 (UI) |
+| One-way exchange support — backend acceptance logic | Phase 7 |
+
+### Stage 1 Scope (Frontend Foundation Only)
+
+Stage 1 builds the UI shell only:
+
+- Discover page layout, user cards, skills modal, filter/search controls
+- All UI states: loading skeleton, initial browse, empty, error, active filters
+- Responsive layout and dark mode
+- Route registration and navigation
+
+No API calls, no mock data, no business logic, no backend integration.
 
 ### Business Rules
 
-- Marketplace is publicly accessible — no authentication required to browse.
+- Discover is publicly accessible — no authentication required to browse.
 - Exchange Requests (Phase 7) still require authentication — browsing and discovery do not.
-- Marketplace cards are lightweight previews. They are not complete profiles.
-- Selecting a card navigates to the user's Public Profile (`/users/{username}`) for the full view.
-- Marketplace does not duplicate Public Profile functionality. It provides discovery; Public Profile provides detail.
-- A user must satisfy all three requirements to appear in Marketplace: (1) email verified, (2) profile completed (5+ contributing fields — see Profile Completion above), (3) at least one Marketplace-eligible skill. A Marketplace-eligible skill is a user_skill that is both approved and discoverable in Marketplace. For the MVP, all approved user skills are Marketplace-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension).
+- Discover cards are lightweight previews. They are not complete profiles.
+- Clicking a card opens the View Skills Modal, showing all matched skills as a preview. The card also contains a dedicated "View Profile" link that navigates to the user's Public Profile (`/users/{username}`) for the full view.
+- Discover does not duplicate Public Profile functionality. It provides discovery; Public Profile provides detail.
+- A user must satisfy all three requirements to appear in Discover: (1) email verified, (2) profile completed (5+ contributing fields — see Profile Completion above), (3) at least one Discover-eligible skill. A Discover-eligible skill is a user_skill that is both approved and discoverable in Discover. For the MVP, all approved user skills are Discover-eligible — this terminology remains valid if future phases introduce visibility controls (private skills, moderation, suspension).
 - Eligibility is evaluated automatically by the platform. Users do not submit applications, and administrators do not manually approve listings. Once all requirements are met, the user becomes discoverable. If a user later fails to satisfy any requirement, they become ineligible until all requirements are met again.
-- Future enhancements such as marketplace moderation, suspension, verification, featured users, trusted experts, and manual review workflows are outside MVP scope.
+- Future enhancements such as discover moderation, suspension, verification, featured users, trusted experts, and manual review workflows are outside MVP scope.
 
 ### Search Filters
 
@@ -512,17 +527,17 @@ The marketplace allows users to discover potential learning partners. It is the 
 
 ### Display
 
-- Results show a lightweight card: avatar, name, headline, location, matched skill chips (max 3), total match count. Cards display only skills that match the current search criteria and active filters — unrelated skills are not shown. When browsing without a query or filter, cards show the user's top 3 Marketplace-eligible skills as a preview.
+- Results show a lightweight card: avatar, name, headline, location, matched skill chips (max 3), total match count. Cards display only skills that match the current search criteria and active filters — unrelated skills are not shown. When browsing without a query or filter, cards show the user's top 3 Discover-eligible skills as a preview.
 - **Search ranking** (when `q` is provided) uses deterministic relevance-based priority. Ranking is calculated after all active filters have been applied — only matching skills influence the order:
    1. Exact skill name match
    2. Partial skill name match
-   3. Number of matching skills — counted from the set of skills that remain after all active Marketplace search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Marketplace-eligible skills are not counted.
-   4. Alphabetical by display name (final tie-breaker)
-- **Browse mode** (no search query) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by display name.
-- No authentication required — anyone can browse the marketplace
+   3. Number of matching skills — counted from the set of skills that remain after all active Discover search criteria and filters are applied. Users with more matching skills rank higher. Unrelated Discover-eligible skills are not counted.
+   4. Alphabetical by `users.name` (final tie-breaker: `users.id`)
+- **Browse mode** (no search query) does not use relevance ranking. Eligible users are returned in default ordering: alphabetical by `users.name` (tie-breaker: `users.id`).
+- No authentication required — anyone can browse discover
 - Search text is optional. Filters operate independently — users may browse using category, type, or experience level filters without entering a search term. When no query or filter is active, all eligible users are shown (paginated, default ordering).
 - The authenticated user (if logged in) is excluded from their own results
-- Clicking a user card navigates to the full public profile (`/users/{username}`)
+- Clicking a user card opens the View Skills Modal as a preview. A separate "View Profile" link navigates to the full public profile (`/users/{username}`)
 
 ### States
 
@@ -870,19 +885,19 @@ Support:
 
 ---
 
-## Marketplace
+## Discover
 
-- [ ] Browse Users (paginated, default alphabetical ordering, no search required)
-- [ ] Search Users (by skill name, case-insensitive partial match, relevance-ranked)
-- [ ] Filter Users (by category, type, experience level — filters work independently of search)
-- [ ] Marketplace Page (search bar, filter bar, user cards grid, pagination)
-- [ ] Marketplace User Resource (lightweight listing-optimized response)
-- [ ] Matched Skills Preview (top 3 + total count)
-- [ ] Loading / Empty / Error States
-- [ ] Responsive Layout (1/2/3 columns)
-- [ ] Dark Mode Support
-- [ ] Backend Tests (15 test cases)
-- [ ] Documentation (API.md, UI.md, ROADMAP.md, FEATURES.md)
+- [x] Browse Users (paginated, default alphabetical ordering, no search required)
+- [x] Search Users (by skill name, case-insensitive partial match, relevance-ranked)
+- [x] Filter Users (by category, type, experience level — filters work independently of search)
+- [x] Discover Page (search bar, filter bar, user cards grid, pagination)
+- [x] Discover User Resource (lightweight listing-optimized response)
+- [x] Matched Skills Preview (top 3 + total count)
+- [x] Loading / Empty / Error States
+- [x] Responsive Layout (1/2/3 columns)
+- [x] Dark Mode Support
+- [x] Backend Tests (37 test cases, 110 assertions)
+- [x] Documentation (API.md, UI.md, ROADMAP.md, FEATURES.md)
 
 ---
 

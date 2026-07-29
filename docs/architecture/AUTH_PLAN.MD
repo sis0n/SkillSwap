@@ -968,7 +968,7 @@ function App() {
 │  useMutation(logout)                   → clear all queries  │
 │                                                             │
 │  (Future)                                                   │
-│  useQuery(['marketplace'], { search, category })            │
+│  useQuery(['discover'], { search, category })               │
 │  useQuery(['skills'])                                       │
 │  useQuery(['exchange-requests'])                            │
 │  useMutation(accept) → invalidate ['exchange-requests']     │
@@ -998,7 +998,7 @@ function App() {
 │                                                             │
 │  (Future)                                                   │
 │  uiStore: { sidebarOpen, currentTab, ... }                 │
-│  filterStore: { marketplaceFilters, ... }                  │
+│  filterStore: { discoverFilters, ... }                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1006,7 +1006,7 @@ function App() {
 
 | Data belongs in... | Examples |
 |---|---|
-| **TanStack Query** | Everything from the API: user, marketplace, skills, exchanges, messages, sessions, reviews, notifications |
+| **TanStack Query** | Everything from the API: user, discover, skills, exchanges, messages, sessions, reviews, notifications |
 | **Zustand** | UI-only or client-persisted state: auth flags, theme, sidebar state, form drafts, filter selections |
 
 ---

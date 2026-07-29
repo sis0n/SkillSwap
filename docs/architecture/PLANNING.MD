@@ -133,7 +133,7 @@ Users can:
 
 ---
 
-## Skill Marketplace
+## Discover
 
 Users can:
 

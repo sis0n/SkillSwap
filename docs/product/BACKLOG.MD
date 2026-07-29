@@ -20,7 +20,7 @@ Do not implement any feature listed here unless explicitly assigned to a future 
 
 ## High Priority
 
-Important after MVP. These features directly improve user experience, trust, or marketplace quality.
+Important after MVP. These features directly improve user experience, trust, or discover quality.
 
 ## Medium Priority
 
@@ -39,18 +39,18 @@ Large strategic features that require significant architecture, algorithm design
 **Description:** Users can endorse another user's skills, similar to LinkedIn endorsements. An endorsement is a lightweight social signal that a skill has been verified by another community member.
 
 **Problem it solves:**
-- Trust is hard to establish in a peer-to-peer marketplace
+- Trust is hard to establish in a peer-to-peer discover
 - Users cannot verify skill claims without evidence
-- Marketplace search lacks ranking signals beyond self-reported data
+- Discover search lacks ranking signals beyond self-reported data
 
 **User value:**
-- Endorsed skills stand out on profiles and in marketplace search
+- Endorsed skills stand out on profiles and in discover search
 - Users can quickly identify trusted teachers for a skill
 - Endorsements provide social proof without requiring a full review
 
 **Technical considerations:**
 - Endorsements require abuse prevention (one endorsement per skill per user, rate limiting)
-- Endorsement count should be a queryable metric for marketplace ranking
+- Endorsement count should be a queryable metric for discover ranking
 - Endorsements must be removable by the endorser
 - A user should not be able to endorse their own skills
 - Removing a user skill should cascade-delete its endorsements
@@ -80,12 +80,12 @@ Indexes:
 - Rate limit: max 20 endorsements per user per day
 
 **Dependencies:**
-- Phase 6 (Marketplace) — endorsements used as a ranking signal
+- Phase 6 (Discover) — endorsements used as a ranking signal
 - Phase 7 (Exchange Requests) — endorsements visible on request sender profile
 
 **Estimated complexity:** Medium (1 new table, 1 model, 1 controller, validation, tests)
 
-**Recommended roadmap phase:** Phase 6.1 — Marketplace Trust Signals
+**Recommended roadmap phase:** Phase 6.1 — Discover Trust Signals
 
 **Why NOT in MVP:** Endorsements are a trust layer on top of the core skill exchange flow. The MVP must first prove that the exchange workflow works before adding social verification signals. Users can still discover and request exchanges based on self-reported skills alone.
 
@@ -218,8 +218,8 @@ The simplest MVP-viable approach is adding columns directly to `user_skills` (Op
 **Description:** A recommendation engine that computes compatibility between users based on complementary skills. Given User A teaches X and User B wants to learn X, the engine suggests a match.
 
 **Problem it solves:**
-- Users must manually browse the marketplace to find complementary skill pairs
-- The marketplace requires active searching rather than passive discovery
+- Users must manually browse discover to find complementary skill pairs
+- Discover requires active searching rather than passive discovery
 - Matching efficiency directly impacts exchange request volume
 
 **User value:**
@@ -257,14 +257,14 @@ No new tables required for the initial version. The existing `skills`, `user_ski
 
 **Dependencies:**
 - Phase 5 (Skills) — user_skills with type (teaching/learning) already exist
-- Phase 6 (Marketplace) — the matching engine powers marketplace recommendations
+- Phase 6 (Discover) — the matching engine powers discover recommendations
 - Phase 7 (Exchange Requests) — matches are the entry point for requests
 
 **Estimated complexity:** Medium (1 service class, 1 optional API endpoint, scoring logic, tests)
 
-**Recommended roadmap phase:** Phase 6.2 — Marketplace Recommendations
+**Recommended roadmap phase:** Phase 6.2 — Discover Recommendations
 
-**Why NOT in MVP:** The marketplace browse + search functionality is sufficient for MVP launch. A matching engine is an optimization that improves discovery but is not required for the first exchange to happen. Users can find each other through search and category filtering.
+**Why NOT in MVP:** The discover browse + search functionality is sufficient for MVP launch. A matching engine is an optimization that improves discovery but is not required for the first exchange to happen. Users can find each other through search and category filtering.
 
 ---
 
@@ -550,13 +550,13 @@ skills (extended)
 **Description:** Track usage metrics for skills in the catalog — how many users teach each skill, how many want to learn it, how many exchange requests reference it.
 
 **Problem it solves:**
-- Marketplace ranking lacks objective popularity signals
+- Discover ranking lacks objective popularity signals
 - Users cannot see which skills are most in demand
 - Analytics for platform growth and skill gap analysis
 
 **User value:**
 - Users can identify popular skills for their learning goals
-- Marketplace search can rank by relevance + popularity
+- Discover search can rank by relevance + popularity
 - Platform insights for content strategy and community growth
 
 **Technical considerations:**
@@ -605,14 +605,14 @@ Update via model events or a queued job.
 
 **Dependencies:**
 - Phase 5 (Skills) — user_skills and exchange_requests exist
-- Phase 6 (Marketplace) — metrics used for ranking
+- Phase 6 (Discover) — metrics used for ranking
 - Phase 7 (Exchange Requests) — exchange count requires exchange_requests
 
 **Estimated complexity:** Low to Medium (model scopes or new table + observer + cache)
 
-**Recommended roadmap phase:** Phase 6.3 — Marketplace Ranking Signals
+**Recommended roadmap phase:** Phase 6.3 — Discover Ranking Signals
 
-**Why NOT in MVP:** Popularity metrics enhance marketplace ranking but are not required for basic search and filter functionality. The MVP can sort alphabetically and by featured status without needing popularity data.
+**Why NOT in MVP:** Popularity metrics enhance discover ranking but are not required for basic search and filter functionality. The MVP can sort alphabetically and by featured status without needing popularity data.
 
 ---
 
@@ -672,7 +672,7 @@ $query->where(function ($q) use ($term) {
 
 **Estimated complexity:** Low (PostgreSQL extension + index + query update)
 
-**Recommended roadmap phase:** Phase 6 — Marketplace (integrated with marketplace search)
+**Recommended roadmap phase:** Phase 6 — Discover (integrated with discover search)
 
 **Why NOT in MVP:** The current `LIKE '%term%'` search is functional for the MVP catalog size (~60 skills). Fuzzy search becomes important as the catalog grows through user-created skills. Alias resolution (#7) provides better ROI for the initial catalog.
 
@@ -787,20 +787,20 @@ Data requirements:
 
 | # | Feature | Priority | Recommended Phase | Complexity |
 |---|---------|----------|-------------------|------------|
-| 1 | Skill Endorsements | High | 6.1 — Marketplace Trust Signals | Medium |
-| 4 | Skill Matching Engine | High | 6.2 — Marketplace Recommendations | Medium |
+| 1 | Skill Endorsements | High | 6.1 — Discover Trust Signals | Medium |
+| 4 | Skill Matching Engine | High | 6.2 — Discover Recommendations | Medium |
 | 7 | Skill Aliases | High | 5.3 — Skill Alias System | Low |
 | 2 | Portfolio Integration | High | 6.5 — Skill Portfolio Integration | Low |
 | 6 | Skill History | Medium | 12 — Deployment (Admin Tooling) | Low |
 | 8 | Skill Merge | Medium | 12 — Deployment (Admin Tooling) | Medium |
 | 9 | Skill Moderation | Medium | 12 — Deployment (Admin Tooling) | High |
-| 10 | Popularity Metrics | Medium | 6.3 — Marketplace Ranking Signals | Low |
-| 11 | Search Improvements | Medium | 6 — Marketplace | Low |
+| 10 | Popularity Metrics | Medium | 6.3 — Discover Ranking Signals | Low |
+| 11 | Search Improvements | Medium | 6 — Discover | Low |
 | 3 | Learning Progress | Medium | 9.5 — Learning Progress Tracking | Low-Med |
 | 5 | Bulk Skill Operations | Low-Med | 13 — Post-MVP Polish | Medium |
 | 12 | Skill Badges | Long-Term | 13 — Gamification | High |
 | 13 | AI Recommendations | Long-Term | 15+ — AI Platform | Very High |
-| 14 | Marketplace Location Filter | Medium | 6.4 — Marketplace Location & Timezone | Low-Med |
+| 14 | Discover Location Filter | Medium | 6.4 — Discover Location & Timezone | Low-Med |
 
 ---
 
@@ -822,7 +822,7 @@ When implementing any backlog item, follow these principles:
 
 This backlog should be reviewed when:
 
-- Phase 6 (Marketplace) is being designed — matching engine and popularity metrics directly impact marketplace architecture
+- Phase 6 (Discover) is being designed — matching engine and popularity metrics directly impact discover architecture
 - User feedback indicates a specific pain point (e.g., "I can't find the skill I want" → search improvements)
 - Platform scale reaches a threshold (e.g., 1,000+ skills → moderation becomes necessary)
 - A new phase is being planned and needs scope definition
@@ -830,11 +830,11 @@ This backlog should be reviewed when:
 
 ---
 
-# 14. Marketplace Location Filter
+# 14. Discover Location Filter
 
 **Priority:** Medium
 
-**Description:** Allow filtering marketplace search results by user location, enabling users to find learning partners in their city, region, or timezone.
+**Description:** Allow filtering discover search results by user location, enabling users to find learning partners in their city, region, or timezone.
 
 **Problem it solves:**
 - Users in different timezones may have incompatible schedules
@@ -859,12 +859,12 @@ This backlog should be reviewed when:
 - Option C (not recommended): Pattern matching on free-text `profiles.location` — too unreliable
 
 **Dependencies:**
-- Phase 6 (Marketplace) — the marketplace search infrastructure must exist first
+- Phase 6 (Discover) — the discover search infrastructure must exist first
 - Profile location schema — if Option B is chosen, a migration to add structured location fields
 
 **Estimated complexity:** Low (Option A) to Medium (Option B)
 
-**Recommended roadmap phase:** Phase 6.4 — Marketplace Location & Timezone Filtering
+**Recommended roadmap phase:** Phase 6.4 — Discover Location & Timezone Filtering
 
 **Why NOT in MVP:** The MVP focuses on skill-based matching, which is the core value proposition. Location filtering adds secondary value and can be deferred without blocking the exchange workflow. Users can view location on profile pages before sending a request. Timezone filtering using the existing `profiles.timezone` field is a simpler interim solution than free-text location matching.
 
