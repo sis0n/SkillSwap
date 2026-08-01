@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react"
+import { Check, Pencil, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,8 +19,10 @@ import { ExchangeRequestStatusBadge } from "./ExchangeRequestStatusBadge"
 
 interface ExchangeRequestCardProps {
   request: ExchangeRequest
-  currentUserId: number
+  currentUserId?: number
+  isMutating?: boolean
   onViewDetails?: (request: ExchangeRequest) => void
+  onEdit?: (request: ExchangeRequest) => void
   onAccept?: (request: ExchangeRequest) => void
   onDecline?: (request: ExchangeRequest) => void
   onCancel?: (request: ExchangeRequest) => void
@@ -29,18 +31,32 @@ interface ExchangeRequestCardProps {
 export function ExchangeRequestCard({
   request,
   currentUserId,
+  isMutating = false,
   onViewDetails,
+  onEdit,
   onAccept,
   onDecline,
   onCancel,
 }: ExchangeRequestCardProps) {
-  const role = getRequestRole(request, currentUserId)
-  const otherParty = getOtherParty(request, currentUserId)
-  const canAccept = role === "receiver" && request.status === "pending"
-  const canDecline = role === "receiver" && request.status === "pending"
+  const role = currentUserId ? getRequestRole(request, currentUserId) : null
+  const otherParty = currentUserId
+    ? getOtherParty(request, currentUserId)
+    : request.sender
+  const canAccept =
+    request.status === "pending" &&
+    role != null &&
+    (request.reconfirmation_required_by ?? "receiver") === role
+  const canDecline =
+    request.status === "pending" &&
+    role != null &&
+    (request.reconfirmation_required_by ?? "receiver") === role
   const canCancel =
     role === "sender" &&
     (request.status === "pending" || request.status === "accepted")
+  const canEdit =
+    (role === "sender" &&
+      (request.status === "pending" || request.status === "accepted")) ||
+    (role === "receiver" && request.status === "accepted")
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
@@ -85,6 +101,12 @@ export function ExchangeRequestCard({
                 {getDisplayName(otherParty)}
               </h3>
               <ExchangeRequestStatusBadge status={request.status} />
+              {request.status === "pending" &&
+                request.reconfirmation_required_by && (
+                  <span className="text-xs italic text-muted-foreground">
+                    Awaiting {request.reconfirmation_required_by} confirmation
+                  </span>
+                )}
             </div>
             <p className="truncate text-xs text-muted-foreground">
               @{otherParty.username}
@@ -100,12 +122,18 @@ export function ExchangeRequestCard({
             <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">
               Teaching
             </span>
-            <Badge
-              variant="outline"
-              className={exchangeRequestSkillColors.teaching}
-            >
-              {getSkillDisplayName(request.teaching_skill)}
-            </Badge>
+            {request.teaching_skill ? (
+              <Badge
+                variant="outline"
+                className={exchangeRequestSkillColors.teaching}
+              >
+                {getSkillDisplayName(request.teaching_skill)}
+              </Badge>
+            ) : (
+              <span className="text-xs italic text-muted-foreground">
+                No teaching skill offered
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -133,11 +161,26 @@ export function ExchangeRequestCard({
           </p>
         )}
 
-        {(canAccept || canDecline || canCancel) && (
+        {(canAccept || canDecline || canCancel || canEdit) && (
           <div className="flex flex-wrap gap-2 border-t pt-3">
+            {canEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isMutating}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit?.(request)
+                }}
+              >
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+            )}
             {canAccept && (
               <Button
                 size="sm"
+                disabled={isMutating}
                 onClick={(e) => {
                   e.stopPropagation()
                   onAccept?.(request)
@@ -151,6 +194,7 @@ export function ExchangeRequestCard({
               <Button
                 size="sm"
                 variant="outline"
+                disabled={isMutating}
                 onClick={(e) => {
                   e.stopPropagation()
                   onDecline?.(request)
@@ -164,6 +208,7 @@ export function ExchangeRequestCard({
               <Button
                 size="sm"
                 variant="outline"
+                disabled={isMutating}
                 onClick={(e) => {
                   e.stopPropagation()
                   onCancel?.(request)

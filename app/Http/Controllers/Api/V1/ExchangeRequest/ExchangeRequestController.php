@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\ExchangeRequest;
 
 use App\Http\Controllers\Api\V1\BaseController;
 use App\Http\Requests\Api\V1\ExchangeRequest\StoreExchangeRequestRequest;
+use App\Http\Requests\Api\V1\ExchangeRequest\UpdateExchangeRequestRequest;
 use App\Http\Resources\Api\V1\ExchangeRequestResource;
 use App\Models\ExchangeRequest;
 use App\Services\Exchange\ExchangeRequestException;
@@ -83,14 +84,40 @@ class ExchangeRequestController extends BaseController
         );
     }
 
+    public function update(UpdateExchangeRequestRequest $request, ExchangeRequest $exchangeRequest): JsonResponse
+    {
+        if (! $this->isParty($request->user()->id, $exchangeRequest)) {
+            return $this->forbidden('You are not part of this exchange request.');
+        }
+
+        try {
+            $exchangeRequest = $this->exchangeRequestService->update(
+                $request->user(),
+                $exchangeRequest,
+                $request->validated(),
+            );
+        } catch (ExchangeRequestException $e) {
+            return $this->error($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return $this->success(
+            data: [
+                'exchange_request' => new ExchangeRequestResource($exchangeRequest),
+            ],
+            message: 'Exchange request updated.',
+        );
+    }
+
     public function accept(Request $request, ExchangeRequest $exchangeRequest): JsonResponse
     {
         if (! $this->isParty($request->user()->id, $exchangeRequest)) {
             return $this->forbidden('You are not part of this exchange request.');
         }
 
-        if ($request->user()->id !== $exchangeRequest->receiver_id) {
-            return $this->forbidden('Only the receiver can accept this request.');
+        if (! $this->isPendingDecider($request->user()->id, $exchangeRequest)) {
+            return $this->forbidden(
+                sprintf('Only the %s can accept this request.', $this->pendingDecider($exchangeRequest)),
+            );
         }
 
         try {
@@ -113,8 +140,10 @@ class ExchangeRequestController extends BaseController
             return $this->forbidden('You are not part of this exchange request.');
         }
 
-        if ($request->user()->id !== $exchangeRequest->receiver_id) {
-            return $this->forbidden('Only the receiver can decline this request.');
+        if (! $this->isPendingDecider($request->user()->id, $exchangeRequest)) {
+            return $this->forbidden(
+                sprintf('Only the %s can decline this request.', $this->pendingDecider($exchangeRequest)),
+            );
         }
 
         try {
@@ -158,5 +187,17 @@ class ExchangeRequestController extends BaseController
     private function isParty(int $userId, ExchangeRequest $exchangeRequest): bool
     {
         return $userId === $exchangeRequest->sender_id || $userId === $exchangeRequest->receiver_id;
+    }
+
+    private function pendingDecider(ExchangeRequest $exchangeRequest): string
+    {
+        return $exchangeRequest->reconfirmation_required_by ?? 'receiver';
+    }
+
+    private function isPendingDecider(int $userId, ExchangeRequest $exchangeRequest): bool
+    {
+        return $this->pendingDecider($exchangeRequest) === 'sender'
+            ? $userId === $exchangeRequest->sender_id
+            : $userId === $exchangeRequest->receiver_id;
     }
 }

@@ -310,7 +310,7 @@ Allow users to discover potential learning partners by browsing, searching, and 
 - Type Filter (toggle or select: All, Teaching, Learning)
 - Experience Level Filter (dropdown: beginner, intermediate, advanced, expert)
 - User Card (avatar, name, headline, location, matched skill chips with type + experience level badges — shows only skills matching current search criteria and active filters; clickable to open skills modal)
-- Skills Modal (displays all matched skills grouped by Teaching/Learning with experience badges; includes "Send Exchange Request" button and "I'm not looking for anything in return" checkbox for one-way teaching)
+- Skills Modal (displays all matched skills grouped by Teaching/Learning with experience badges; includes "Send Exchange Request" button. The request modal shows the "I'm not looking for anything in return" checkbox — sender only — for one-way teaching)
 - Pagination
 
 ### User Flow
@@ -323,7 +323,7 @@ Allow users to discover potential learning partners by browsing, searching, and 
 6. Each user card shows up to 3 matched skill chips with "+N more" if additional matches exist
 7. Clicking a user card opens a modal showing all matched skills grouped by Teaching/Learning
 8. From the modal, user can send an exchange request (Phase 7, placeholder in Phase 6)
-9. The exchange request modal includes a "I'm not looking for anything in return" checkbox for one-way teaching (no return skill required)
+9. The exchange request modal (sender view) includes a "I'm not looking for anything in return" checkbox for one-way teaching (no return skill required). The receiver edit view has no such checkbox — its "Skill you'll teach in return" field is optional and clearable, but at least one skill (either "teach in return" or the sender's skill to learn) must remain selected when saving.
 10. From the public profile, user can also send an exchange request (Phase 7)
 
 ### States
@@ -640,7 +640,7 @@ GET /api/v1/skills (for skill search)
 
 ### Purpose
 
-Manage incoming and outgoing exchange requests. Users send a skill swap proposal (teach one skill, optionally learn another), and the receiver accepts or declines; the sender can cancel. Supports one-way teaching ("I'm not looking for anything in return").
+Manage incoming and outgoing exchange requests. Users send a skill swap proposal (teach one skill, optionally learn another), and the pending decider (receiver for a new request, the non-editor after an edit) accepts or declines; the sender can cancel. Supports one-way teaching ("I'm not looking for anything in return") and one-way learning (sender offers no skill). Editing an accepted request resets it to pending for re-confirmation by the non-editor.
 
 ### Route
 
@@ -649,9 +649,9 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 ### Components
 
 - **ExchangeRequestsPage** — main page with Received / Sent tabs, pending count badge, and "New Request" button. **Received is the default tab** on first visit; Sent is shown only when the user explicitly switches.
-- **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons (Accept / Decline for receiver, Cancel for sender)
+- **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons. Accept/Decline are shown to the pending decider (receiver for a new request; the non-editor after an edit). A "Awaiting sender/receiver confirmation" note appears while a re-confirmation is pending after an edit.
 - **ExchangeRequestDetailsModal** — read-only detail view for a single request: sender and receiver, teaching/learning skills (or one-way label), message, status badge, created date, and context-sensitive action buttons matching ExchangeRequestCard
-- **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, one-way checkbox, message input)
+- **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, message input). Sender view adds a one-way checkbox; receiver edit view instead shows "Skill you'll teach in return" (optional, clearable via a None option) and the optional "Skill {sender} will teach you" selector. Saving requires at least one skill selected.
 - **StatusBadge** — color-coded badge for pending/accepted/declined/cancelled (`completed` is added in Phase 9 and must not be rendered in Phase 7)
 
 ### States
@@ -666,8 +666,8 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 
 #### ExchangeRequestCard
 
-- **Pending (received):** Shows Accept (primary) and Decline (outline) buttons
-- **Pending (sent):** Shows Cancel (outline) button
+- **Pending (awaiting me):** When the current user is the pending decider (receiver for a new request; the non-editor after an edit), shows Accept (primary) and Decline (outline) buttons
+- **Pending (awaiting them):** When the other party is the pending decider, shows Cancel (outline) button and the "Awaiting sender/receiver confirmation" note
 - **Accepted:** Sender shows Cancel (outline) button (matches the `accepted → cancelled` transition); Receiver shows no action buttons. Shows request date
 - **Declined/Cancelled:** No action buttons; shows request date
 - **One-way:** Learning skill row replaced with "One-way exchange (no return skill requested)" italic label
@@ -675,17 +675,18 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 #### SendExchangeRequestModal
 
 - **Loading:** Teaching skill selector shows spinner while fetching user's skills
-- **No teaching skills:** "You need to add a teaching skill first."
-- **No receiver learning skills:** "This user has no learning skills listed." (learning selector disabled)
-- **One-way checkbox:** Hides the learning skill selector when checked
-- **Saving:** Send button shows spinner, form disabled
-- **Validation error:** Inline error message — "Failed to send request."
+- **No teaching skills:** "No teaching skills yet — you can send the request without one, or add one later." (sender view; the field is optional)
+- **No receiver learning skills:** "This user has no teaching skills listed." (receiver's teaching-skill selector disabled)
+- **One-way checkbox:** Hides the learning skill selector when checked (sender view only)
+- **Receiver edit view:** no one-way checkbox. Shows "Skill you'll teach in return (optional)" — the receiver's own teaching skills, with a "None" option to clear it — and "Skill {sender} will teach you (optional)". At least one of the two must be selected on save.
+- **Saving:** Send/Save button shows spinner, form disabled
+- **Validation error:** Inline field error — e.g. "Please select at least one skill for the exchange."
 - **Success:** Modal closes, request list refreshes
 
 **Skill selector data sources:**
-- **Teaching Skill selector (sender's skills):** populated from `GET /api/v1/me/skills`, filtered client-side to `type === "teaching"` (the authenticated user is the sender). The backend create endpoint requires the chosen skill to belong to the sender and be type "teaching" — the selector only offers skills that satisfy this.
-- **Learning Skill selector (receiver's skills):** populated from the receiver's public profile `GET /api/v1/users/{username}` → `data.user.user_skills.learning`. The username comes from the current context (ViewSkillsModal or Public Profile page). The backend create endpoint requires the chosen skill to belong to the receiver and be type "learning" — the selector only offers skills that satisfy this.
-- Both selectors must render the selected skill's name and experience level, and submit the underlying `user_skill` id (`teaching_skill_id`, `learning_skill_id`).
+- **Teaching Skill selector (sender's skills):** populated from `GET /api/v1/me/skills`, filtered client-side to `type === "teaching"` (the authenticated user is the sender). The backend create endpoint requires the chosen skill (if provided) to belong to the sender and be type "teaching" — the selector only offers skills that satisfy this.
+- **Learning Skill selector (receiver's teaching skills):** populated from the receiver's public profile `GET /api/v1/users/{username}` → `data.user.user_skills.teaching`. The username comes from the current context (ViewSkillsModal or Public Profile page). The backend create endpoint requires the chosen skill to belong to the receiver and be type "teaching" — the selector only offers skills that satisfy this. In the receiver edit view this selector becomes "Skill you'll teach in return".
+- Both selectors must render the selected skill's name and experience level, and submit the underlying `user_skill` id (`teaching_skill_id`, `learning_skill_id`). At least one of the two ids is required.
 
 **Message normalization (frontend):** the message input applies the same normalization as the backend before submission — trimmed of leading/trailing whitespace, and a trimmed-empty value is sent as `null` (omitted/not sent as an empty string). The Zod schema normalizes on submit so both layers behave consistently. This matches the backend rule: whitespace-only messages are never persisted as non-empty strings.
 
@@ -699,13 +700,15 @@ POST /api/v1/me/exchange-requests
 
 GET /api/v1/me/exchange-requests/{id}
 
+PUT /api/v1/me/exchange-requests/{id} (edit — reset accepted → pending for re-confirmation)
+
 PUT /api/v1/me/exchange-requests/{id}/accept
 
 PUT /api/v1/me/exchange-requests/{id}/decline
 
 PUT /api/v1/me/exchange-requests/{id}/cancel
 
-**Cache invalidation:** after every successful mutation — Create Request, Accept, Decline, Cancel — the frontend invalidates:
+**Cache invalidation:** after every successful mutation — Create Request, Update Request, Accept, Decline, Cancel — the frontend invalidates:
 - `["exchange-requests"]` (the Exchange Requests list query), and
 - the Dashboard query key used by the project (e.g. `["dashboard"]`, or the dashboard summary key that drives the "Active Exchanges" card).
 

@@ -5,10 +5,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ActiveExchangeCard } from "@/features/exchange-request/components/ActiveExchangeCard"
+import { useActiveExchangeCount } from "@/features/exchange-request/hooks/useExchangeRequests"
 import { useAuthStore } from "@/stores/authStore"
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user)
+  const { data: activeCount = 0, isLoading: activeCountLoading } =
+    useActiveExchangeCount()
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -24,7 +27,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <ActiveExchangeCard count={0} />
+        <ActiveExchangeCard count={activeCount} loading={activeCountLoading} />
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Upcoming Sessions</CardTitle>

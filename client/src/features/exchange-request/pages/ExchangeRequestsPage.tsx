@@ -1,7 +1,11 @@
-import { AlertCircle, Plus, RefreshCw } from "lucide-react"
+import { AlertCircle, Compass, RefreshCw } from "lucide-react"
 import { useMemo, useState } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { DiscoverPagination } from "@/features/discover/components/DiscoverPagination"
+import { getApiErrorMessage } from "@/lib/utils"
+import { useAuthStore } from "@/stores/authStore"
 
 import { ExchangeRequestCard } from "../components/ExchangeRequestCard"
 import { ExchangeRequestDetailsModal } from "../components/ExchangeRequestDetailsModal"
@@ -11,61 +15,111 @@ import { ExchangeRequestLoadingState } from "../components/ExchangeRequestLoadin
 import { ExchangeRequestTabs } from "../components/ExchangeRequestTabs"
 import { SendExchangeRequestModal } from "../components/SendExchangeRequestModal"
 import {
-  PLACEHOLDER_CURRENT_USER_ID,
-  PLACEHOLDER_EXCHANGE_REQUESTS,
-} from "../data/placeholder"
+  useAcceptExchangeRequest,
+  useCancelExchangeRequest,
+  useDeclineExchangeRequest,
+  useExchangeRequests,
+  usePendingExchangeRequestCount,
+} from "../hooks/useExchangeRequests"
+import { exchangeRequestStatuses } from "../schemas/exchangeRequestSchemas"
 import type {
   ExchangeRequest,
+  ExchangeRequestStatus,
   ExchangeRequestTab,
 } from "../types/exchange-request"
 
-interface ExchangeRequestsPageProps {
-  isLoading?: boolean
-  isError?: boolean
-  error?: string | null
-  onRetry?: () => void
-  requests?: ExchangeRequest[]
-  currentUserId?: number
+const STATUS_VALUES = exchangeRequestStatuses as readonly string[]
+
+function numParam(param: string | null): number | undefined {
+  if (param === null) return undefined
+  const n = Number(param)
+  return Number.isNaN(n) ? undefined : n
 }
 
-export default function ExchangeRequestsPage({
-  isLoading = false,
-  isError = false,
-  error = null,
-  onRetry = () => {},
-  requests = PLACEHOLDER_EXCHANGE_REQUESTS,
-  currentUserId = PLACEHOLDER_CURRENT_USER_ID,
-}: ExchangeRequestsPageProps) {
-  const [activeTab, setActiveTab] = useState<ExchangeRequestTab>("received")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [detailsRequest, setDetailsRequest] = useState<ExchangeRequest | null>(
-    null,
-  )
-  const [sendOpen, setSendOpen] = useState(false)
+export default function ExchangeRequestsPage() {
+  const currentUserId = useAuthStore((state) => state.user?.id)
+  const navigate = useNavigate()
+  const [urlSearchParams, setUrlSearchParams] = useSearchParams()
+  const [detailsRequestId, setDetailsRequestId] = useState<number | null>(null)
+  const [editRequest, setEditRequest] = useState<ExchangeRequest | null>(null)
+  const [pendingActionId, setPendingActionId] = useState<number | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const receivedRequests = useMemo(
-    () => requests.filter((request) => request.receiver.id === currentUserId),
-    [requests, currentUserId],
-  )
-  const sentRequests = useMemo(
-    () => requests.filter((request) => request.sender.id === currentUserId),
-    [requests, currentUserId],
-  )
-  const pendingCount = useMemo(
-    () =>
-      receivedRequests.filter((request) => request.status === "pending").length,
-    [receivedRequests],
+  const activeTab: ExchangeRequestTab =
+    urlSearchParams.get("tab") === "sent" ? "sent" : "received"
+
+  const rawStatus = urlSearchParams.get("status")
+  const statusFilter = STATUS_VALUES.includes(rawStatus ?? "")
+    ? (rawStatus as ExchangeRequestStatus)
+    : ""
+
+  const page = Math.max(1, numParam(urlSearchParams.get("page")) ?? 1)
+
+  const searchParams = useMemo(
+    () => ({
+      role: activeTab === "received" ? "receiver" as const : "sender" as const,
+      status: statusFilter || undefined,
+      page,
+      per_page: 20,
+    }),
+    [activeTab, statusFilter, page],
   )
 
-  const activeRequests =
-    activeTab === "received" ? receivedRequests : sentRequests
-  const filteredRequests = useMemo(
-    () =>
-      statusFilter
-        ? activeRequests.filter((request) => request.status === statusFilter)
-        : activeRequests,
-    [activeRequests, statusFilter],
-  )
+  const { data, isLoading, isError, error, refetch } =
+    useExchangeRequests(searchParams)
+  const { data: pendingCount = 0 } = usePendingExchangeRequestCount()
+
+  const requests = data?.success ? data.data.exchange_requests : []
+  const meta = data?.meta ?? {
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0,
+  }
+
+  const acceptMutation = useAcceptExchangeRequest()
+  const declineMutation = useDeclineExchangeRequest()
+  const cancelMutation = useCancelExchangeRequest()
+
+  function rebuildParams(updates: Record<string, string | null>): URLSearchParams {
+    const next = new URLSearchParams(urlSearchParams)
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "") {
+        next.delete(key)
+      } else {
+        next.set(key, value)
+      }
+    }
+    return next
+  }
+
+  function handleTabChange(tab: ExchangeRequestTab) {
+    setUrlSearchParams(
+      rebuildParams({ tab: tab === "sent" ? "sent" : null, page: null }),
+    )
+  }
+
+  function handleStatusChange(value: string) {
+    setUrlSearchParams(rebuildParams({ status: value || null, page: null }))
+  }
+
+  function handlePageChange(nextPage: number) {
+    setUrlSearchParams(
+      rebuildParams({ page: nextPage > 1 ? String(nextPage) : null }),
+    )
+  }
+
+  function runAction(
+    request: ExchangeRequest,
+    mutate: typeof acceptMutation.mutate,
+  ) {
+    setActionError(null)
+    setPendingActionId(request.id)
+    mutate(request.id, {
+      onSettled: () => setPendingActionId(null),
+      onError: (err: unknown) => setActionError(getApiErrorMessage(err)),
+    })
+  }
 
   const activeFilterCount = statusFilter ? 1 : 0
 
@@ -80,9 +134,11 @@ export default function ExchangeRequestsPage({
             Propose a skill swap or review requests you have received.
           </p>
         </div>
-        <Button onClick={() => setSendOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          New Request
+        <Button asChild>
+          <Link to="/discover">
+            <Compass className="mr-2 size-4" />
+            Find a Partner
+          </Link>
         </Button>
       </div>
 
@@ -98,9 +154,11 @@ export default function ExchangeRequestsPage({
             Unable to load exchange requests.
           </p>
           {error && (
-            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : error}
+            </p>
           )}
-          <Button variant="outline" className="mt-4" onClick={onRetry}>
+          <Button variant="outline" className="mt-4" onClick={() => refetch()}>
             <RefreshCw className="mr-2 size-4" />
             Retry
           </Button>
@@ -108,54 +166,86 @@ export default function ExchangeRequestsPage({
       ) : (
         <ExchangeRequestTabs
           activeTab={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           pendingCount={pendingCount}
         >
           <ExchangeRequestFilters
             status={statusFilter}
-            onStatusChange={setStatusFilter}
+            onStatusChange={handleStatusChange}
             activeFilterCount={activeFilterCount}
-            onClear={() => setStatusFilter("")}
+            onClear={() => handleStatusChange("")}
           />
 
-          {activeRequests.length === 0 ? (
+          {actionError && (
+            <div
+              role="alert"
+              className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {actionError}
+            </div>
+          )}
+
+          {meta.total === 0 ? (
             <div className="mt-4">
               <ExchangeRequestEmptyState
                 variant={activeTab}
-                onNewRequest={
-                  activeTab === "received" ? () => setSendOpen(true) : undefined
-                }
+                onNewRequest={() => navigate("/discover")}
               />
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : requests.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
               No requests match this status filter.
             </p>
           ) : (
-            <div className="mt-4 space-y-4">
-              {filteredRequests.map((request) => (
-                <ExchangeRequestCard
-                  key={request.id}
-                  request={request}
-                  currentUserId={currentUserId}
-                  onViewDetails={setDetailsRequest}
-                />
-              ))}
-            </div>
+            <>
+              <div className="mt-4 space-y-4">
+                {requests.map((request) => (
+                  <ExchangeRequestCard
+                    key={request.id}
+                    request={request}
+                    currentUserId={currentUserId}
+                    onViewDetails={(r) => setDetailsRequestId(r.id)}
+                    onEdit={(r) => setEditRequest(r)}
+                    isMutating={pendingActionId === request.id}
+                    onAccept={() =>
+                      runAction(request, acceptMutation.mutate.bind(acceptMutation))
+                    }
+                    onDecline={() =>
+                      runAction(request, declineMutation.mutate.bind(declineMutation))
+                    }
+                    onCancel={() =>
+                      runAction(request, cancelMutation.mutate.bind(cancelMutation))
+                    }
+                  />
+                ))}
+              </div>
+
+              {meta.last_page > 1 && (
+                <div className="mt-6">
+                  <DiscoverPagination
+                    currentPage={meta.current_page}
+                    totalPages={meta.last_page}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
+            </>
           )}
         </ExchangeRequestTabs>
       )}
 
       <ExchangeRequestDetailsModal
-        request={detailsRequest}
+        requestId={detailsRequestId}
         currentUserId={currentUserId}
-        onClose={() => setDetailsRequest(null)}
+        onClose={() => setDetailsRequestId(null)}
       />
 
       <SendExchangeRequestModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        onSubmit={() => setSendOpen(false)}
+        open={editRequest !== null}
+        onClose={() => setEditRequest(null)}
+        request={editRequest}
+        receiver={editRequest?.receiver}
+        currentUserId={currentUserId}
       />
     </div>
   )

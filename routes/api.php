@@ -121,6 +121,9 @@ Route::name('api.')
                 Route::get('exchange-requests/{exchangeRequest}', [ExchangeRequestController::class, 'show'])
                     ->name('me.exchange-requests.show');
 
+                Route::put('exchange-requests/{exchangeRequest}', [ExchangeRequestController::class, 'update'])
+                    ->name('me.exchange-requests.update');
+
                 Route::put('exchange-requests/{exchangeRequest}/accept', [ExchangeRequestController::class, 'accept'])
                     ->name('me.exchange-requests.accept');
 

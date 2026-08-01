@@ -94,6 +94,11 @@ class ExchangeRequestTest extends TestCase
         $this->getJson('/api/v1/me/exchange-requests/1')->assertStatus(401);
     }
 
+    public function test_guest_cannot_update_exchange_request(): void
+    {
+        $this->putJson('/api/v1/me/exchange-requests/1')->assertStatus(401);
+    }
+
     public function test_guest_cannot_accept_exchange_request(): void
     {
         $this->putJson('/api/v1/me/exchange-requests/1/accept')->assertStatus(401);
@@ -118,7 +123,7 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = $this->createEligibleUser();
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $learningSkill = $this->createUserSkill($receiver, 'learning');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
 
         $response = $this->actingAs($sender)
             ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $learningSkill));
@@ -132,7 +137,7 @@ class ExchangeRequestTest extends TestCase
                 'data' => [
                     'exchange_request' => [
                         'id', 'sender', 'receiver', 'teaching_skill', 'learning_skill',
-                        'message', 'status', 'created_at', 'updated_at',
+                        'message', 'status', 'reconfirmation_required_by', 'created_at', 'updated_at',
                     ],
                 ],
             ])
@@ -166,6 +171,53 @@ class ExchangeRequestTest extends TestCase
             'receiver_id' => $receiver->id,
             'learning_skill_id' => null,
         ]);
+    }
+
+    public function test_can_create_exchange_request_without_teaching_skill(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $this->createUserSkill($sender, 'learning');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
+
+        $response = $this->actingAs($sender)
+            ->postJson('/api/v1/me/exchange-requests', [
+                'receiver_id' => $receiver->id,
+                'teaching_skill_id' => null,
+                'learning_skill_id' => $learningSkill->id,
+                'message' => 'Let us learn together!',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.exchange_request.teaching_skill', null)
+            ->assertJsonPath('data.exchange_request.learning_skill.id', $learningSkill->id)
+            ->assertJsonPath('data.exchange_request.status', 'pending');
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
+            'teaching_skill_id' => null,
+            'learning_skill_id' => $learningSkill->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_create_rejects_request_without_any_skills(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $this->createUserSkill($receiver, 'learning');
+
+        $response = $this->actingAs($sender)
+            ->postJson('/api/v1/me/exchange-requests', [
+                'receiver_id' => $receiver->id,
+                'teaching_skill_id' => null,
+                'learning_skill_id' => null,
+                'message' => 'Let us learn together!',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Provide at least one skill for the exchange.');
     }
 
     public function test_create_validates_required_fields(): void
@@ -221,15 +273,15 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = $this->createEligibleUser();
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $this->createUserSkill($receiver, 'learning');
+        $this->createUserSkill($receiver, 'teaching');
         $other = $this->createEligibleUser();
-        $otherLearningSkill = $this->createUserSkill($other, 'learning');
+        $otherTeachingSkill = $this->createUserSkill($other, 'teaching');
 
         $response = $this->actingAs($sender)
-            ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $otherLearningSkill));
+            ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $otherTeachingSkill));
 
         $response->assertStatus(422)
-            ->assertJsonPath('message', 'The learning skill must belong to the receiver and be of type learning.');
+            ->assertJsonPath('message', 'The learning skill must belong to the receiver and be of type teaching.');
     }
 
     public function test_create_rejects_learning_skill_with_wrong_type(): void
@@ -237,13 +289,13 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = $this->createEligibleUser();
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $receiverTeachingSkill = $this->createUserSkill($receiver, 'teaching');
+        $receiverLearningSkill = $this->createUserSkill($receiver, 'learning');
 
         $response = $this->actingAs($sender)
-            ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $receiverTeachingSkill));
+            ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $receiverLearningSkill));
 
         $response->assertStatus(422)
-            ->assertJsonPath('message', 'The learning skill must belong to the receiver and be of type learning.');
+            ->assertJsonPath('message', 'The learning skill must belong to the receiver and be of type teaching.');
     }
 
     public function test_create_rejects_message_over_500_characters(): void
@@ -331,7 +383,7 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = User::factory()->create(['email_verified_at' => now()]);
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $receiverSkill = $this->createUserSkill($receiver, 'learning');
+        $receiverSkill = $this->createUserSkill($receiver, 'teaching');
 
         $response = $this->actingAs($sender)
             ->postJson('/api/v1/me/exchange-requests', $this->validCreatePayload($sender, $receiver, $teachingSkill, $receiverSkill));
@@ -362,7 +414,7 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = $this->createEligibleUser();
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $learningSkill = $this->createUserSkill($receiver, 'learning');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
         $this->createRequest($sender, $receiver, $teachingSkill, $learningSkill);
 
         $response = $this->actingAs($sender)
@@ -377,7 +429,7 @@ class ExchangeRequestTest extends TestCase
         $sender = $this->createEligibleUser();
         $receiver = $this->createEligibleUser();
         $teachingSkill = $this->createUserSkill($sender, 'teaching');
-        $learningSkill = $this->createUserSkill($receiver, 'learning');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
         $this->createRequest($receiver, $sender, $learningSkill, $teachingSkill);
 
         $response = $this->actingAs($sender)
@@ -812,5 +864,333 @@ class ExchangeRequestTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('message', 'Only pending or accepted requests can be cancelled.');
+    }
+
+    // ---------------------------------------------------------------
+    // Update
+    // ---------------------------------------------------------------
+
+    private function validUpdatePayload(
+        UserSkill $teachingSkill,
+        ?UserSkill $learningSkill = null,
+        array $overrides = [],
+    ): array {
+        return array_merge([
+            'teaching_skill_id' => $teachingSkill->id,
+            'learning_skill_id' => $learningSkill?->id,
+            'message' => 'Updated proposal.',
+        ], $overrides);
+    }
+
+    public function test_sender_can_edit_pending_request(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $originalTeaching = $this->createUserSkill($sender, 'teaching');
+        $newTeaching = $this->createUserSkill($sender, 'teaching');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $originalTeaching);
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($newTeaching, $learningSkill));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('message', 'Exchange request updated.')
+            ->assertJsonPath('data.exchange_request.status', 'pending')
+            ->assertJsonPath('data.exchange_request.teaching_skill.id', $newTeaching->id)
+            ->assertJsonPath('data.exchange_request.learning_skill.id', $learningSkill->id)
+            ->assertJsonPath('data.exchange_request.message', 'Updated proposal.');
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'teaching_skill_id' => $newTeaching->id,
+            'learning_skill_id' => $learningSkill->id,
+            'message' => 'Updated proposal.',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_receiver_cannot_edit_pending_request(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill);
+
+        $response = $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill));
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Only the sender can edit a pending request.');
+    }
+
+    public function test_sender_can_edit_accepted_request_resets_to_pending(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $newTeaching = $this->createUserSkill($sender, 'teaching');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $learningSkill, status: 'accepted');
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($newTeaching, $learningSkill));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'pending')
+            ->assertJsonPath('data.exchange_request.teaching_skill.id', $newTeaching->id);
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'status' => 'pending',
+            'teaching_skill_id' => $newTeaching->id,
+            'reconfirmation_required_by' => 'receiver',
+        ]);
+    }
+
+    public function test_receiver_can_edit_accepted_request_resets_to_pending(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $response = $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'pending')
+            ->assertJsonPath('data.exchange_request.learning_skill.id', $newLearning->id);
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'status' => 'pending',
+            'learning_skill_id' => $newLearning->id,
+            'reconfirmation_required_by' => 'sender',
+        ]);
+    }
+
+    public function test_sender_can_accept_after_receiver_edit_of_accepted(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning))
+            ->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.reconfirmation_required_by', 'sender');
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}/accept");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'accepted')
+            ->assertJsonPath('data.exchange_request.reconfirmation_required_by', null);
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'status' => 'accepted',
+            'reconfirmation_required_by' => null,
+            'learning_skill_id' => $newLearning->id,
+        ]);
+    }
+
+    public function test_sender_can_decline_after_receiver_edit_of_accepted(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning))
+            ->assertStatus(200);
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}/decline");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'declined')
+            ->assertJsonPath('data.exchange_request.reconfirmation_required_by', null);
+    }
+
+    public function test_receiver_cannot_accept_after_their_own_edit_of_accepted(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning))
+            ->assertStatus(200);
+
+        $response = $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}/accept");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', 'Only the sender can accept this request.');
+    }
+
+    public function test_receiver_cannot_decline_after_their_own_edit_of_accepted(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning))
+            ->assertStatus(200);
+
+        $response = $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}/decline");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', 'Only the sender can decline this request.');
+    }
+
+    public function test_reconfirmation_flips_to_receiver_when_sender_edits_pending(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $newTeaching = $this->createUserSkill($sender, 'teaching');
+        $originalLearning = $this->createUserSkill($receiver, 'teaching');
+        $newLearning = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $originalLearning, status: 'accepted');
+
+        $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $newLearning))
+            ->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.reconfirmation_required_by', 'sender');
+
+        $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($newTeaching, $newLearning))
+            ->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'pending')
+            ->assertJsonPath('data.exchange_request.reconfirmation_required_by', 'receiver');
+    }
+
+    public function test_update_can_convert_request_to_one_way(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $learningSkill);
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, learningSkill: null));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.learning_skill', null);
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'learning_skill_id' => null,
+        ]);
+    }
+
+    public function test_update_can_remove_teaching_skill(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $learningSkill = $this->createUserSkill($receiver, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill, $learningSkill, status: 'accepted');
+
+        $response = $this->actingAs($receiver)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $learningSkill, ['teaching_skill_id' => null]));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.exchange_request.status', 'pending')
+            ->assertJsonPath('data.exchange_request.teaching_skill', null)
+            ->assertJsonPath('data.exchange_request.learning_skill.id', $learningSkill->id);
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'teaching_skill_id' => null,
+            'learning_skill_id' => $learningSkill->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_cannot_edit_declined_or_cancelled_request(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $declined = $this->createRequest($sender, $receiver, $teachingSkill, status: 'declined');
+        $cancelled = $this->createRequest($sender, $receiver, $teachingSkill, status: 'cancelled');
+
+        $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$declined->id}", $this->validUpdatePayload($teachingSkill))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Only pending or accepted requests can be edited.');
+
+        $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$cancelled->id}", $this->validUpdatePayload($teachingSkill))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Only pending or accepted requests can be edited.');
+    }
+
+    public function test_update_rejects_teaching_skill_not_owned_by_sender(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $other = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $otherTeachingSkill = $this->createUserSkill($other, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill);
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($otherTeachingSkill));
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'The teaching skill must belong to you and be of type teaching.');
+    }
+
+    public function test_update_rejects_learning_skill_not_owned_by_receiver(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $other = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $otherTeachingSkill = $this->createUserSkill($other, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill);
+
+        $response = $this->actingAs($sender)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill, $otherTeachingSkill));
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'The learning skill must belong to the receiver and be of type teaching.');
+    }
+
+    public function test_non_party_cannot_edit_request(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $stranger = $this->createEligibleUser();
+        $teachingSkill = $this->createUserSkill($sender, 'teaching');
+        $exchangeRequest = $this->createRequest($sender, $receiver, $teachingSkill);
+
+        $response = $this->actingAs($stranger)
+            ->putJson("/api/v1/me/exchange-requests/{$exchangeRequest->id}", $this->validUpdatePayload($teachingSkill));
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', 'You are not part of this exchange request.');
     }
 }

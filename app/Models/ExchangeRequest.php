@@ -21,6 +21,7 @@ class ExchangeRequest extends Model
         'learning_skill_id',
         'message',
         'status',
+        'reconfirmation_required_by',
     ];
 
     public function sender(): BelongsTo

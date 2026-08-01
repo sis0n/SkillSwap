@@ -1776,8 +1776,9 @@ All exchange request endpoints are authenticated. They are scoped to the authent
 | GET    | /me/exchange-requests                           | List user's exchange requests        |
 | GET    | /me/exchange-requests/{id}                      | Show a single exchange request       |
 | POST   | /me/exchange-requests                           | Create a new exchange request        |
-| PUT    | /me/exchange-requests/{id}/accept               | Accept a pending request (receiver)  |
-| PUT    | /me/exchange-requests/{id}/decline              | Decline a pending request (receiver) |
+| PUT    | /me/exchange-requests/{id}                      | Update an exchange request (resets accepted → pending for re-confirmation) |
+| PUT    | /me/exchange-requests/{id}/accept               | Accept a pending request (pending decider) |
+| PUT    | /me/exchange-requests/{id}/decline              | Decline a pending request (pending decider) |
 | PUT    | /me/exchange-requests/{id}/cancel               | Cancel a request (sender)            |
 
 ### Canonical HTTP Response Codes
@@ -1818,13 +1819,14 @@ Route Model Binding
   → compare authenticated user (Auth::id()) against the resolved request's sender_id / receiver_id
   → if the user is neither sender nor receiver → 403 Forbidden
   → if the user is a party (sender or receiver) → proceed with the action, then enforce role-specific rules
-     (e.g. only the receiver may accept/decline; only the sender may cancel) → 403 for the wrong party
+     (e.g. only the pending decider may accept/decline — receiver for a new request, the non-editor after an edit;
+     only the sender may cancel) → 403 for the wrong party
 ```
 
 Notes:
 - Binding is implicit (Laravel route model binding on the `{id}` / route parameter). A nonexistent id returns 404 before any ownership logic runs.
-- Ownership (party check) is distinct from role (sender vs receiver). Both must pass: a sender calling Accept fails the role check (403) even though they pass the party check.
-- This applies uniformly to Show, Accept, Decline, and Cancel. List is scoped to the authenticated user at the query level and returns only the user's own requests (no ownership check needed per row).
+- Ownership (party check) is distinct from role (pending decider vs sender). Both must pass: a sender calling Accept fails the role check (403) even though they pass the party check.
+- This applies uniformly to Show, Accept, Decline, and Cancel. Update additionally requires the pending-edit party rule (sender for `pending`, either party for `accepted`). List is scoped to the authenticated user at the query level and returns only the user's own requests (no ownership check needed per row).
 - No formal Laravel Policy is used — ownership is enforced in the controller, consistent with the Phase 5 pattern.
 
 ### State Machine
@@ -1833,11 +1835,12 @@ The status field is one of: `pending`, `accepted`, `declined`, `cancelled`, `com
 
 ```
 pending
-├── accepted    (receiver)
-├── declined    (receiver)
+├── accepted    (pending decider — receiver for a new request, non-editor after an edit)
+├── declined    (pending decider)
 └── cancelled   (sender)
 
 accepted
+├── pending     (either party edits — resets for re-confirmation by the non-editor)
 ├── cancelled   (sender)
 └── completed   (Phase 9 — not exposed in Phase 7)
 
@@ -1855,14 +1858,15 @@ All transitions not listed above are forbidden and return 422. Terminal states (
 | Field              | Type    | Required | Description                                        |
 | ------------------ | ------- | -------- | -------------------------------------------------- |
 | receiver_id        | integer | yes      | ID of the user receiving the request               |
-| teaching_skill_id  | integer | yes      | ID of the sender's teaching user_skill             |
-| learning_skill_id  | integer | no       | ID of the receiver's learning user_skill (null = one-way) |
+| teaching_skill_id  | integer | no       | ID of the sender's teaching user_skill (null/omitted = no skill offered) |
+| learning_skill_id  | integer | no       | ID of the receiver's teaching user_skill (null = one-way) |
 | message            | string  | no       | Optional message (max 500 characters)              |
 
 **Validation Rules:**
 - `receiver_id`: required, integer, exists:users,id
-- `teaching_skill_id`: required, integer, exists:user_skills,id — must belong to sender, must be "teaching" type
-- `learning_skill_id`: nullable, integer, exists:user_skills,id — must belong to receiver, must be "learning" type
+- `teaching_skill_id`: nullable, integer, exists:user_skills,id — if present, must belong to sender and be "teaching" type
+- `learning_skill_id`: nullable, integer, exists:user_skills,id — must belong to receiver, must be "teaching" type
+- At least one of `teaching_skill_id` / `learning_skill_id` must be provided: 422
 - `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; if the trimmed value is empty it is stored as `null` (whitespace-only messages are never persisted as non-empty strings)
 - `receiver_id` must not equal the authenticated user (self-request): 422
 - No active request (status IN pending, accepted) may exist between the pair in either direction: 422
@@ -1882,6 +1886,7 @@ All transitions not listed above are forbidden and return 422. Terminal states (
       "learning_skill": null,
       "message": "Let us learn together!",
       "status": "pending",
+      "reconfirmation_required_by": null,
       "created_at": "2026-07-29T12:00:00.000000Z",
       "updated_at": "2026-07-29T12:00:00.000000Z"
     }
@@ -1891,7 +1896,7 @@ All transitions not listed above are forbidden and return 422. Terminal states (
 
 **Error Responses:**
 - 401: Unauthenticated
-- 422: Validation failed, or business rule violation (duplicate active request, wrong skill owner, self-request, ineligible sender or receiver)
+- 422: Validation failed, or business rule violation (duplicate active request, wrong skill owner, self-request, ineligible sender or receiver, no skill provided)
 
 ### List Exchange Requests (GET /me/exchange-requests)
 
@@ -1929,6 +1934,7 @@ The `id DESC` tie-breaker guarantees deterministic ordering when `created_at` co
         "learning_skill": { "...UserSkillResource..." },
         "message": null,
         "status": "pending",
+        "reconfirmation_required_by": null,
         "created_at": "2026-07-29T12:00:00.000000Z",
         "updated_at": "2026-07-29T12:00:00.000000Z"
       }
@@ -1951,24 +1957,63 @@ Returns a single exchange request. Only the sender and receiver can view it.
 - 403: User is not part of this exchange request
 - 404: Exchange request not found
 
+### Update Exchange Request (PUT /me/exchange-requests/{id})
+
+Edit the skills and message of an exchange request. Available only to a party of the request.
+
+**Request Body:**
+
+| Field              | Type    | Required | Description                                        |
+| ------------------ | ------- | -------- | -------------------------------------------------- |
+| teaching_skill_id  | integer | no       | ID of the sender's teaching user_skill (null/omitted = no skill offered) |
+| learning_skill_id  | integer | no       | ID of the receiver's teaching user_skill (null = one-way) |
+| message            | string  | no       | Optional message (max 500 characters)              |
+
+**Permission & Status Rules:**
+- A `pending` request can only be edited by the **sender**.
+- An `accepted` request can be edited by **either party** (sender or receiver).
+- Editing an `accepted` request resets its status to `pending` and sets `reconfirmation_required_by` to the **non-editor** party, who must re-confirm via accept/decline. Editing any request (pending or accepted) records the non-editor as the party whose confirmation is pending.
+- `declined` and `cancelled` requests are terminal and cannot be edited.
+- `receiver_id` is immutable and never part of the update payload.
+
+**Validation Rules:**
+- `teaching_skill_id`: nullable, integer, exists:user_skills,id — if present, must belong to sender and be "teaching" type
+- `learning_skill_id`: nullable, integer, exists:user_skills,id — must belong to receiver, must be "teaching" type
+- At least one of `teaching_skill_id` / `learning_skill_id` must be provided: 422
+- `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; if the trimmed value is empty it is stored as `null`
+
+**Success Response (200):** same shape as Create Exchange Request, with `message: "Exchange request updated."`
+
+**Error Responses:**
+- 403: User is not part of this exchange request
+- 422: Only the sender can edit a pending request.
+- 422: Only pending or accepted requests can be edited.
+- 422: The teaching skill must belong to you and be of type teaching.
+- 422: The learning skill must belong to the receiver and be of type teaching.
+- 422: Provide at least one skill for the exchange.
+
 ### Accept Exchange Request (PUT /me/exchange-requests/{id}/accept)
 
-Receiver only. Valid only when current status is `pending`. Transition: `pending` → `accepted`.
+The pending decider only. Valid only when current status is `pending`. Transition: `pending` → `accepted`.
+
+**Pending decider** = `reconfirmation_required_by` when set (the non-editor of the last edit); otherwise the **receiver** (initial request). On success, `reconfirmation_required_by` is cleared.
 
 Executes as a conditional update against the expected source state (`status = 'pending'`). If a concurrent request changed the status first, the update affects zero rows and the operation fails with 422 (see Canonical HTTP Response Codes) and a message indicating the request is no longer in the expected state. No partial update occurs.
 
 **Error Responses:**
-- 403: Only the receiver can accept this request
+- 403: Only the sender can accept this request (when `reconfirmation_required_by = 'sender'`)
+- 403: Only the receiver can accept this request (default)
 - 422: Only pending requests can be accepted (including replay of an already-accepted request, or a concurrency conflict)
 
 ### Decline Exchange Request (PUT /me/exchange-requests/{id}/decline)
 
-Receiver only. Valid only when current status is `pending`. Transition: `pending` → `declined`.
+The pending decider only (see Accept). Valid only when current status is `pending`. Transition: `pending` → `declined`. On success, `reconfirmation_required_by` is cleared.
 
 Executes as a conditional update against the expected source state (`status = 'pending'`), with the same concurrency behavior as Accept.
 
 **Error Responses:**
-- 403: Only the receiver can decline this request
+- 403: Only the sender can decline this request (when `reconfirmation_required_by = 'sender'`)
+- 403: Only the receiver can decline this request (default)
 - 422: Only pending requests can be declined (including replay of an already-declined request, or a concurrency conflict)
 
 ### Cancel Exchange Request (PUT /me/exchange-requests/{id}/cancel)
@@ -1987,7 +2032,7 @@ Create and transition operations execute atomically inside a database transactio
 
 ### API Resource Stability
 
-`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning it. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed.
+`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning it. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `reconfirmation_required_by`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed. `teaching_skill` and `learning_skill` are nullable (`null` when the sender offers no teaching skill or no return skill is requested, respectively). `reconfirmation_required_by` is nullable (`'sender'`/`'receiver'` while a re-confirmation is pending after an edit, `null` otherwise).
 
 ### Notifications
 

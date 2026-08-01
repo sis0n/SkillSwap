@@ -38,17 +38,18 @@ export interface ExchangeRequest {
   id: number
   sender: ExchangeRequestUser
   receiver: ExchangeRequestUser
-  teaching_skill: ExchangeRequestSkill
+  teaching_skill: ExchangeRequestSkill | null
   learning_skill: ExchangeRequestSkill | null
   message: string | null
   status: ExchangeRequestStatus
+  reconfirmation_required_by: "sender" | "receiver" | null
   created_at: string
   updated_at: string
 }
 
 export interface SendExchangeRequestData {
   receiver_id: number
-  teaching_skill_id: number
+  teaching_skill_id?: number | null
   learning_skill_id?: number | null
   message?: string | null
 }

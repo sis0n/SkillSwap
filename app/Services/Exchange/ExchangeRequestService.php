@@ -67,7 +67,7 @@ class ExchangeRequestService
                 throw new ExchangeRequestException('The specified user does not exist.');
             }
 
-            $this->assertSenderEligible($sender, (int) $data['teaching_skill_id']);
+            $this->assertSenderEligible($sender, $data['teaching_skill_id'] ?? null);
 
             $this->assertReceiverEligible($receiver);
 
@@ -75,12 +75,14 @@ class ExchangeRequestService
                 $this->assertLearningSkillOwnedByReceiver((int) $data['learning_skill_id'], $receiver);
             }
 
+            $this->assertAtLeastOneSkillProvided($data['teaching_skill_id'] ?? null, $data['learning_skill_id'] ?? null);
+
             $this->assertNoActiveRequestBetween($sender->id, $receiver->id);
 
             $exchangeRequest = ExchangeRequest::create([
                 'sender_id' => $sender->id,
                 'receiver_id' => $receiver->id,
-                'teaching_skill_id' => $data['teaching_skill_id'],
+                'teaching_skill_id' => $data['teaching_skill_id'] ?? null,
                 'learning_skill_id' => $data['learning_skill_id'] ?? null,
                 'message' => $data['message'] ?? null,
                 'status' => 'pending',
@@ -96,11 +98,54 @@ class ExchangeRequestService
             $affected = ExchangeRequest::query()
                 ->where('id', $exchangeRequest->id)
                 ->where('status', 'pending')
-                ->update(['status' => 'accepted']);
+                ->update([
+                    'status' => 'accepted',
+                    'reconfirmation_required_by' => null,
+                ]);
 
             if ($affected === 0) {
                 throw new ExchangeRequestException('Only pending requests can be accepted.');
             }
+
+            return $exchangeRequest->fresh(self::LOAD_WITH);
+        });
+    }
+
+    public function update(User $editor, ExchangeRequest $exchangeRequest, array $data): ExchangeRequest
+    {
+        return DB::transaction(function () use ($editor, $exchangeRequest, $data): ExchangeRequest {
+            if (! in_array($exchangeRequest->status, ['pending', 'accepted'], true)) {
+                throw new ExchangeRequestException('Only pending or accepted requests can be edited.');
+            }
+
+            if ($exchangeRequest->status === 'pending' && $exchangeRequest->sender_id !== $editor->id) {
+                throw new ExchangeRequestException('Only the sender can edit a pending request.');
+            }
+
+            $this->assertAtLeastOneSkillProvided($data['teaching_skill_id'] ?? null, $data['learning_skill_id'] ?? null);
+
+            if (isset($data['teaching_skill_id']) && $data['teaching_skill_id'] !== null) {
+                $this->assertTeachingSkillOwnedBySender((int) $data['teaching_skill_id'], $exchangeRequest->sender);
+            }
+
+            if (isset($data['learning_skill_id']) && $data['learning_skill_id'] !== null) {
+                $this->assertLearningSkillOwnedByReceiver((int) $data['learning_skill_id'], $exchangeRequest->receiver);
+            }
+
+            $updates = [
+                'teaching_skill_id' => $data['teaching_skill_id'] ?? null,
+                'learning_skill_id' => $data['learning_skill_id'] ?? null,
+                'message' => $data['message'] ?? null,
+                'reconfirmation_required_by' => $editor->id === $exchangeRequest->sender_id
+                    ? 'receiver'
+                    : 'sender',
+            ];
+
+            if ($exchangeRequest->status === 'accepted') {
+                $updates['status'] = 'pending';
+            }
+
+            $exchangeRequest->update($updates);
 
             return $exchangeRequest->fresh(self::LOAD_WITH);
         });
@@ -112,7 +157,10 @@ class ExchangeRequestService
             $affected = ExchangeRequest::query()
                 ->where('id', $exchangeRequest->id)
                 ->where('status', 'pending')
-                ->update(['status' => 'declined']);
+                ->update([
+                    'status' => 'declined',
+                    'reconfirmation_required_by' => null,
+                ]);
 
             if ($affected === 0) {
                 throw new ExchangeRequestException('Only pending requests can be declined.');
@@ -145,7 +193,7 @@ class ExchangeRequestService
         return min(max($perPage, 1), self::MAX_PER_PAGE);
     }
 
-    private function assertSenderEligible(User $sender, int $teachingSkillId): void
+    private function assertSenderEligible(User $sender, ?int $teachingSkillId): void
     {
         if (! $sender->hasVerifiedEmail()) {
             throw new ExchangeRequestException('Your email must be verified to send exchange requests.');
@@ -153,6 +201,27 @@ class ExchangeRequestService
 
         if (! $this->hasProfileCompletionScore($sender)) {
             throw new ExchangeRequestException('Your profile must be at least 50% complete to send exchange requests.');
+        }
+
+        if ($teachingSkillId === null) {
+            return;
+        }
+
+        $teachingSkill = UserSkill::query()
+            ->where('id', $teachingSkillId)
+            ->where('user_id', $sender->id)
+            ->where('type', 'teaching')
+            ->exists();
+
+        if (! $teachingSkill) {
+            throw new ExchangeRequestException('The teaching skill must belong to you and be of type teaching.');
+        }
+    }
+
+    private function assertTeachingSkillOwnedBySender(?int $teachingSkillId, User $sender): void
+    {
+        if ($teachingSkillId === null) {
+            return;
         }
 
         $teachingSkill = UserSkill::query()
@@ -183,16 +252,23 @@ class ExchangeRequestService
         }
     }
 
+    private function assertAtLeastOneSkillProvided(?int $teachingSkillId, ?int $learningSkillId): void
+    {
+        if ($teachingSkillId === null && $learningSkillId === null) {
+            throw new ExchangeRequestException('Provide at least one skill for the exchange.');
+        }
+    }
+
     private function assertLearningSkillOwnedByReceiver(int $learningSkillId, User $receiver): void
     {
         $learningSkill = UserSkill::query()
             ->where('id', $learningSkillId)
             ->where('user_id', $receiver->id)
-            ->where('type', 'learning')
+            ->where('type', 'teaching')
             ->exists();
 
         if (! $learningSkill) {
-            throw new ExchangeRequestException('The learning skill must belong to the receiver and be of type learning.');
+            throw new ExchangeRequestException('The learning skill must belong to the receiver and be of type teaching.');
         }
     }
 

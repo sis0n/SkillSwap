@@ -1,4 +1,5 @@
-import { ArrowLeft, Calendar, ExternalLink, Globe2, MapPin, MessageSquare } from "lucide-react"
+import { ArrowLeft, Calendar, ExternalLink, Globe2, Handshake, MapPin } from "lucide-react"
+import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { AvailabilityManager } from "@/components/shared/AvailabilityManager"
@@ -6,9 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SendExchangeRequestModal } from "@/features/exchange-request/components/SendExchangeRequestModal"
+import { toExchangeRequestUser } from "@/features/exchange-request/utils"
 import { SkillsSection } from "@/features/skills/components/SkillsSection"
 import { usePublicProfile } from "@/features/profile/hooks/useProfile"
 import { cn } from "@/lib/utils"
+import { useAuthStore } from "@/stores/authStore"
 
 function SkeletonProfile() {
   return (
@@ -34,6 +38,8 @@ function SkeletonProfile() {
 
 export default function PublicProfilePage() {
   const { username } = useParams<{ username: string }>()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const [sendOpen, setSendOpen] = useState(false)
   const { data: user, isLoading, isError, error, refetch } = usePublicProfile(username ?? "")
 
   if (isLoading) {
@@ -215,12 +221,19 @@ export default function PublicProfilePage() {
                 </>
               )}
 
-              <Button className="mt-2 w-full" asChild>
-                <Link to="#">
-                  <MessageSquare className="mr-2 size-4" />
+              {isAuthenticated ? (
+                <Button className="mt-2 w-full" onClick={() => setSendOpen(true)}>
+                  <Handshake className="mr-2 size-4" />
                   Send Exchange Request
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button className="mt-2 w-full" asChild>
+                  <Link to="/login">
+                    <Handshake className="mr-2 size-4" />
+                    Login to Send Request
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -238,6 +251,12 @@ export default function PublicProfilePage() {
           </Card>
         </div>
       </div>
+
+      <SendExchangeRequestModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        receiver={toExchangeRequestUser(user)}
+      />
     </div>
   )
 }

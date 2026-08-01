@@ -6,7 +6,7 @@ namespace App\Http\Requests\Api\V1\ExchangeRequest;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreExchangeRequestRequest extends FormRequest
+class UpdateExchangeRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -16,7 +16,6 @@ class StoreExchangeRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receiver_id' => ['required', 'integer', 'exists:users,id'],
             'teaching_skill_id' => ['nullable', 'integer', 'exists:user_skills,id'],
             'learning_skill_id' => ['nullable', 'integer', 'exists:user_skills,id'],
             'message' => ['nullable', 'string', 'max:500'],

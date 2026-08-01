@@ -15,10 +15,11 @@ class ExchangeRequestResource extends JsonResource
             'id' => $this->id,
             'sender' => new UserResource($this->sender),
             'receiver' => new UserResource($this->receiver),
-            'teaching_skill' => new UserSkillResource($this->teachingSkill),
+            'teaching_skill' => $this->teachingSkill ? new UserSkillResource($this->teachingSkill) : null,
             'learning_skill' => $this->learningSkill ? new UserSkillResource($this->learningSkill) : null,
             'message' => $this->message,
             'status' => $this->status,
+            'reconfirmation_required_by' => $this->reconfirmation_required_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -77,3 +77,28 @@ export function formatRequestDate(iso: string): string {
     day: "numeric",
   })
 }
+
+export function toExchangeRequestUser(source: {
+  id: number
+  first_name: string
+  middle_name: string | null
+  last_name: string
+  suffix: string | null
+  username: string
+  headline?: string | null
+  avatar_url?: string | null
+  profile?: { avatar_url: string | null; headline: string | null } | null
+}): ExchangeRequestUser {
+  return {
+    id: source.id,
+    first_name: source.first_name,
+    middle_name: source.middle_name,
+    last_name: source.last_name,
+    suffix: source.suffix,
+    username: source.username,
+    profile: {
+      avatar_url: source.profile?.avatar_url ?? source.avatar_url ?? null,
+      headline: source.profile?.headline ?? source.headline ?? null,
+    },
+  }
+}

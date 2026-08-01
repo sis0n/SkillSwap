@@ -905,7 +905,7 @@ Support:
 
 ### Description
 
-Exchange Requests allow Discover-matched users to initiate a skill swap. The sender proposes to teach one of their teaching skills and optionally requests to learn one of the receiver's learning skills. The receiver can accept or decline; the sender can cancel. One-way teaching (no return skill required) is supported via a nullable `learning_skill_id`.
+Exchange Requests allow Discover-matched users to initiate a skill swap. The sender proposes to teach one of their teaching skills and optionally requests to learn one of the receiver's teaching skills. The receiver can accept or decline; the sender can cancel. One-way teaching (no return skill required) is supported via a nullable `learning_skill_id`, and one-way learning (sender offers no skill) via a nullable `teaching_skill_id`. At least one of the two skills is required.
 
 **Optional message handling:** the `message` field is optional. It is trimmed of leading/trailing whitespace before validation; if the trimmed value is empty, it is stored as `null`. Whitespace-only messages are never persisted as non-empty strings. The frontend applies the same normalization before submission so both layers behave consistently.
 
@@ -927,17 +927,25 @@ Two terms are used throughout Phase 7 documentation. They are defined once here 
 
 An `accepted` request is simultaneously an Active Request (for the duplicate guard) and an Active Exchange (for the Dashboard). These are two distinct concepts with different purposes and must not be conflated.
 
+**Pending Decider**
+
+- The party allowed to accept or decline a `pending` request.
+- For a new request (no edits), the pending decider is the **receiver**.
+- After an edit, the pending decider is the **non-editor** — recorded in `reconfirmation_required_by`. This guarantees the party who edited an `accepted` request never re-accepts their own change; the other party confirms it.
+- `reconfirmation_required_by` is `null` for new requests and cleared on accept/decline.
+
 ### Lifecycle (State Machine)
 
 The state machine is the single source of truth for backend, frontend, tests, and API documentation.
 
 ```
 pending
-├── accepted    (receiver accepts)  — Phase 7
-├── declined    (receiver declines) — Phase 7
+├── accepted    (pending decider accepts)  — Phase 7
+├── declined    (pending decider declines) — Phase 7
 └── cancelled   (sender cancels)    — Phase 7
 
 accepted
+├── pending     (either party edits) — Phase 7 (edit resets to pending so the non-editor can re-confirm)
 ├── cancelled   (sender cancels)    — Phase 7
 └── completed   (Phase 9 — Learning Sessions) — future phase
 
@@ -948,10 +956,11 @@ completed  → terminal
 
 **Allowed transitions (Phase 7):**
 
-- `pending → accepted` (receiver)
-- `pending → declined` (receiver)
+- `pending → accepted` (pending decider — receiver for a new request, or the non-editor named by `reconfirmation_required_by` after an edit)
+- `pending → declined` (pending decider)
 - `pending → cancelled` (sender)
 - `accepted → cancelled` (sender)
+- `accepted → pending` (either party edits an accepted request — the edit resets the status to `pending` and records `reconfirmation_required_by` = the non-editor, who must re-confirm)
 
 **Deferred to future phases:**
 
@@ -983,19 +992,22 @@ Exactly who may perform each action. This section is the single authority — al
 | Action  | Sender | Receiver | Other users |
 | ------- | ------ | -------- | ----------- |
 | Create  | ✅     | ❌       | ❌ (403)    |
-| Accept  | ❌     | ✅       | ❌ (403)    |
-| Decline | ❌     | ✅       | ❌ (403)    |
+| Edit (pending) | ✅ | ❌       | ❌ (403)    |
+| Edit (accepted) | ✅ | ✅       | ❌ (403)    |
+| Accept  | ✅ (re-confirm) | ✅ (initial or re-confirm) | ❌ (403) |
+| Decline | ✅ (re-confirm) | ✅ (initial or re-confirm) | ❌ (403) |
 | Cancel  | ✅     | ❌       | ❌ (403)    |
 | List    | ✅ (own requests) | ✅ (own requests) | ❌ (403) |
 | View    | ✅ (part of request) | ✅ (part of request) | ❌ (403) |
 
-- **Create:** only the authenticated sender. The `sender_id` is always the authenticated user's id.
-- **Accept / Decline:** receiver only.
+- **Create:** only the authenticated sender. The `sender_id` is always the authenticated user's id. `teaching_skill_id` is optional — the sender may offer no skill and request only the receiver's skill. At least one of `teaching_skill_id` / `learning_skill_id` is required.
+- **Edit:** a `pending` request can only be edited by the sender. An `accepted` request can be edited by either party. Editing an `accepted` request resets its status to `pending` and records `reconfirmation_required_by` = the **non-editor** (the party who must re-confirm). `declined`/`cancelled` requests are terminal and cannot be edited. Fields: `teaching_skill_id`, `learning_skill_id`, `message`. Ownership of skills is enforced — `teaching_skill_id` (if provided) must belong to the sender, `learning_skill_id` must belong to the receiver. `receiver_id` is immutable.
+- **Accept / Decline:** the pending decider — the `receiver` for a new request, or the party named by `reconfirmation_required_by` after an edit (so the party who edited an `accepted` request never re-accepts their own change; the non-editor confirms).
 - **Cancel:** sender only.
 - **List / View:** sender or receiver only. A user who is not part of the request receives 403.
 - No administrative bypass exists in the MVP.
 
-**Lookup flow:** for any single-resource operation, ownership is enforced via: Route Model Binding → resolve the request by `{id}` (404 if not found) → ownership validation (authenticated user must be sender or receiver) → 403 for unauthorized users → role-specific checks (receiver for accept/decline, sender for cancel) → 403 for the wrong party. See API.MD → Ownership Lookup Flow for the full sequence. No formal Laravel Policy is used — ownership is enforced in the controller, consistent with the Phase 5 pattern.
+**Lookup flow:** for any single-resource operation, ownership is enforced via: Route Model Binding → resolve the request by `{id}` (404 if not found) → ownership validation (authenticated user must be sender or receiver) → 403 for unauthorized users → role-specific checks (pending decider for accept/decline, sender for cancel, sender-or-either-party per status for update) → 403 for the wrong party. See API.MD → Ownership Lookup Flow for the full sequence. No formal Laravel Policy is used — ownership is enforced in the controller, consistent with the Phase 5 pattern.
 
 ### Duplicate Request Rules
 
@@ -1103,13 +1115,14 @@ Receivers discover new requests only by visiting the Exchange Requests page (Rec
 
 - [x] Make `learning_skill_id` nullable (new migration)
 - [x] Create `ExchangeRequestService` with CRUD and status transition methods
-- [x] Create `ExchangeRequestController` (index, show, store, accept, decline, cancel)
+- [x] Create `ExchangeRequestController` (index, show, store, update, accept, decline, cancel)
 - [x] Create `ExchangeRequestResource`
-- [x] Create `StoreExchangeRequestRequest` with validation rules
+- [x] Create `StoreExchangeRequestRequest` / `UpdateExchangeRequestRequest` with validation rules
 - [x] Register routes under `me/exchange-requests`
 - [x] Implement list filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50)
 - [x] Implement optimistic concurrency (conditional updates) for accept, decline, cancel
-- [x] Write tests (19+ test cases covering all status transitions, auth, validation, idempotency, eligibility, concurrency)
+- [x] Implement re-confirmation — editing an accepted request resets it to `pending` with `reconfirmation_required_by` = the non-editor, who must re-confirm via accept/decline
+- [x] Write tests (66 test cases covering all status transitions, auth, validation, idempotency, eligibility, concurrency, optional skills, re-confirmation)
 
 ### Frontend Tasks
 
@@ -1118,12 +1131,13 @@ Receivers discover new requests only by visiting the Exchange Requests page (Rec
 - [ ] Create `features/exchange-request/hooks/useExchangeRequests.ts` hooks
 - [ ] Create `features/exchange-request/schemas/exchangeRequestSchemas.ts` Zod schemas (normalizes `message`: trim, empty → null)
 - [ ] Create `ExchangeRequestCard` component
-- [ ] Create `SendExchangeRequestModal` component (Teaching selector from `GET /me/skills` type teaching; Learning selector from `GET /users/{username}` user_skills.learning)
+- [ ] Create `SendExchangeRequestModal` component (Teaching selector from `GET /me/skills` type teaching; Learning selector from `GET /users/{username}` teaching; edit mode supports either party, receiver can clear their "teach in return" skill via a None option)
 - [ ] Create `ExchangeRequestsPage` with tabs (Received / Sent — Received is the default tab)
 - [ ] Add route `/exchange-requests` to App.tsx
 - [ ] Wire up "Send Exchange Request" buttons in ViewSkillsModal, PublicProfilePage
+- [ ] Wire up edit flow — Edit button on cards/details; saving an accepted request resets to pending with the "Awaiting sender/receiver confirmation" note for the non-editor
 - [ ] Wire up Dashboard "Active Exchanges" card with count derived from the Exchange Requests endpoint
-- [ ] Invalidate `["exchange-requests"]` and the Dashboard query key after every successful mutation (create, accept, decline, cancel)
+- [ ] Invalidate `["exchange-requests"]` and the Dashboard query key after every successful mutation (create, update, accept, decline, cancel)
 
 ### Skill Deletion Relationship
 
@@ -1136,7 +1150,7 @@ Accepted exchanges continue to depend on the skills referenced by their `teachin
 
 ### API Resource Stability
 
-`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning or replacing its current structure. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed.
+`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning or replacing its current structure. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `reconfirmation_required_by`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed. `teaching_skill` and `learning_skill` are nullable (`null` when no skill is offered on that side); `reconfirmation_required_by` is nullable (`'sender'`/`'receiver'` while a re-confirmation is pending after an edit, `null` otherwise).
 
 ### Dashboard Active Exchanges Source
 

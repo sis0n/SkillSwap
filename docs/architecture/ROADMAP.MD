@@ -1444,9 +1444,9 @@ Status: Pending
 Let users send, accept, and reject skill exchange match requests. Phase 7 is the first interactive feature that connects users after discovery. It introduces the exchange request lifecycle: pending → accepted/declined/cancelled, with one-way teaching support.
 
 ### Overview
-Exchange Requests connect Discover-matched users (Phase 6) by letting the sender propose a skill swap: they offer one of their teaching skills and optionally request to learn one of the receiver's learning skills. The receiver accepts or declines; the sender can cancel. One-way teaching ("I'm not looking for anything in return") is supported via a nullable `learning_skill_id`.
+Exchange Requests connect Discover-matched users (Phase 6) by letting the sender propose a skill swap: they offer one of their teaching skills and optionally request to learn one of the receiver's teaching skills. The receiver accepts or declines; the sender can cancel. One-way teaching ("I'm not looking for anything in return") is supported via a nullable `learning_skill_id`, and one-way learning (receiver teaches nothing in return) is supported via a nullable `teaching_skill_id`. At least one of the two skills must be provided.
 
-The `ExchangeRequest` model, migration, and factory already exist (Phase 2 database work). All service, controller, validation, and resource layers remain to be implemented.
+The `ExchangeRequest` model, migration, and factory already exist (Phase 2 database work). All service, controller, validation, and resource layers remain to be implemented. Editing an accepted request resets it to `pending` for re-confirmation by the non-editor, tracked via `reconfirmation_required_by`.
 
 **Authentication**
 Exchange Requests require authentication. Unlike Discover (public browse), sending, listing, accepting, declining, and cancelling all require an authenticated user.
@@ -1478,8 +1478,8 @@ Build the complete Exchange Requests interface with all visual UI states before 
 
 ### Types
 - [x] Create `ExchangeRequestStatus` — Phase 7 uses only: `pending`, `accepted`, `declined`, `cancelled`. The `completed` status is introduced in Phase 9 (Learning Sessions) and must NOT be part of the Phase 7 frontend types, badges, filters, or component logic. It will be added during Phase 9 implementation.
-- [x] Create `ExchangeRequest` interface (id, sender, receiver, teaching_skill, learning_skill, message, status, created_at, updated_at)
-- [x] Create `SendExchangeRequestData` interface (receiver_id, teaching_skill_id, learning_skill_id?, message?)
+- [x] Create `ExchangeRequest` interface (id, sender, receiver, teaching_skill, learning_skill, message, status, reconfirmation_required_by, created_at, updated_at)
+- [x] Create `SendExchangeRequestData` interface (receiver_id, teaching_skill_id?, learning_skill_id?, message?)
 
 ### Boundaries
 Stage 1 is strictly limited to frontend foundation. It must NOT include:
@@ -1498,7 +1498,7 @@ All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend AP
 ### Pages & Components
 - [x] Create `ExchangeRequestsPage` (tabs: Received / Sent)
 - [x] Create `ExchangeRequestCard` (user info, skills, message, status badge, action buttons)
-- [x] Create `SendExchangeRequestModal` (teaching skill selector, learning skill selector, one-way checkbox, message input)
+- [x] Create `SendExchangeRequestModal` (teaching skill selector, learning skill selector, one-way checkbox, message input; edit mode supports either party with role-aware skill fields)
 
 ### Routing
 - [x] Lazy import + register `/exchange-requests` under `AuthenticatedLayout` in App.tsx
@@ -1555,23 +1555,24 @@ Stage 1 explicitly does NOT include:
 
 # Stage 2 — Backend API
 ### Goal
-Implement the Exchange Request API with status transitions, ownership rules, and one-way exchange support.
+Implement the Exchange Request API with status transitions, ownership rules, one-way exchange support (either skill nullable), and re-confirmation after edits.
 
 ### Dependencies
 - Stage 1 completed — UI component structure and type definitions are available for reference.
 - Phase 2 database — `exchange_requests` table already exists.
 
 ### Expected outputs
-- New migration making `exchange_requests.learning_skill_id` nullable (one-way exchange support)
+- New migrations: make `exchange_requests.learning_skill_id` and `exchange_requests.teaching_skill_id` nullable (one-way exchange support), and add `reconfirmation_required_by`
 - `GET /api/v1/me/exchange-requests` endpoint — list user's requests
 - `POST /api/v1/me/exchange-requests` endpoint — create a request
 - `GET /api/v1/me/exchange-requests/{id}` endpoint — view a single request
-- `PUT /api/v1/me/exchange-requests/{id}/accept` — accept a pending request (receiver only)
-- `PUT /api/v1/me/exchange-requests/{id}/decline` — decline a pending request (receiver only)
+- `PUT /api/v1/me/exchange-requests/{id}` — update a request (skills/message; resets accepted → pending for re-confirmation by the non-editor)
+- `PUT /api/v1/me/exchange-requests/{id}/accept` — accept a pending request (pending decider only)
+- `PUT /api/v1/me/exchange-requests/{id}/decline` — decline a pending request (pending decider only)
 - `PUT /api/v1/me/exchange-requests/{id}/cancel` — cancel a pending/accepted request (sender only)
-- `StoreExchangeRequestRequest` form request with validation
+- `StoreExchangeRequestRequest` and `UpdateExchangeRequestRequest` form requests with validation
 - `ExchangeRequestService` with status transition logic
-- `ExchangeRequestResource` with sender, receiver, and skill details
+- `ExchangeRequestResource` with sender, receiver, skill details, and reconfirmation_required_by
 - Backend tests passing for all status transitions, auth, and validation scenarios
 - API.md updated with endpoint documentation
 - API contract finalized and stable — no breaking changes after this stage
@@ -1581,32 +1582,36 @@ Stage 2 must not modify:
 - Existing UI components, layouts, or pages
 - Frontend code of any kind (tsx, css, component state)
 - Client-side routing
-- Existing database tables (new migration only — make `learning_skill_id` nullable)
+- Existing database tables (new migrations only — make `learning_skill_id` / `teaching_skill_id` nullable, add `reconfirmation_required_by`)
 - Existing models, controllers, or services from other phases
 
 ### Database
 - [x] Create migration: make `exchange_requests.learning_skill_id` nullable
+- [x] Create migration: make `exchange_requests.teaching_skill_id` nullable (sender offers no skill)
+- [x] Create migration: add `reconfirmation_required_by` (nullable string: `'sender'` / `'receiver'`, `null` otherwise)
 
 ### Model (`ExchangeRequest.php`) — Already exists
 - [x] Verify relationships: sender, receiver, teachingSkill, learningSkill, conversation, learningSessions
-- [x] Ensure `$fillable` includes: sender_id, receiver_id, teaching_skill_id, learning_skill_id, message, status
+- [x] Ensure `$fillable` includes: sender_id, receiver_id, teaching_skill_id, learning_skill_id, message, status, reconfirmation_required_by
 
 ### Controller & Routes
 - [x] Create `ExchangeRequestController`
 - [x] Register `GET /api/v1/me/exchange-requests`
 - [x] Register `POST /api/v1/me/exchange-requests`
 - [x] Register `GET /api/v1/me/exchange-requests/{exchangeRequest}`
+- [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}` (update)
 - [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/accept`
 - [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/decline`
 - [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/cancel`
 
 ### Form Request
 - [x] Create `StoreExchangeRequestRequest`
+- [x] Create `UpdateExchangeRequestRequest`
 
 Validation:
-- [x] `receiver_id`: required, integer, exists:users,id
-- [x] `teaching_skill_id`: required, integer, exists:user_skills,id
-- [x] `learning_skill_id`: nullable, integer, exists:user_skills,id
+- [x] `receiver_id`: required, integer, exists:users,id (store only)
+- [x] `teaching_skill_id`: nullable, integer, exists:user_skills,id (at least one of teaching/learning required)
+- [x] `learning_skill_id`: nullable, integer, exists:user_skills,id (at least one of teaching/learning required)
 - [x] `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; empty trimmed value stored as `null`
 
 ### Service
@@ -1615,14 +1620,16 @@ Validation:
 - [x] List requests where user is sender or receiver (ordered by `created_at DESC, id DESC`)
 - [x] List filtering by `role` (sender/receiver) and `status`
 - [x] List pagination — `page` default 1, `per_page` default 20, max 50 (matches Discover contract)
-- [x] Create request — teaching_skill belongs to sender and is "teaching" type
-- [x] Create request — learning_skill belongs to receiver and is "learning" type
+- [x] Create request — teaching_skill (if provided) belongs to sender and is "teaching" type
+- [x] Create request — learning_skill (if provided) belongs to receiver and is "teaching" type
+- [x] At least one of teaching_skill_id / learning_skill_id must be provided
+- [x] Update request — sender can edit `pending`; either party can edit `accepted`; edit records `reconfirmation_required_by` = the non-editor and resets `accepted` → `pending` for re-confirmation
 - [x] Bidirectional duplicate guard — at most one active request per unordered pair (regardless of direction or skill combination)
 - [x] Self-request guard (sender_id !== receiver_id)
-- [x] Sender eligibility check (email verified, profile completion ≥ 5, has a teaching skill)
+- [x] Sender eligibility check (email verified, profile completion ≥ 5, teaching skill optional)
 - [x] Receiver eligibility check (email verified, profile completion ≥ 5, at least one skill)
-- [x] Accept — receiver only, status must be pending (optimistic conditional update)
-- [x] Decline — receiver only, status must be pending (optimistic conditional update)
+- [x] Accept — pending decider only (receiver for new requests; the non-editor after an edit), status must be pending (optimistic conditional update); clears `reconfirmation_required_by`
+- [x] Decline — pending decider only (receiver for new requests; the non-editor after an edit), status must be pending (optimistic conditional update); clears `reconfirmation_required_by`
 - [x] Cancel — sender only, status must be pending or accepted (optimistic conditional update)
 
 ### Business Rules
@@ -1644,10 +1651,11 @@ The canonical rules live in FEATURES.MD → Exchange Requests (Phase 7). This ch
 - [x] id
 - [x] sender (UserResource)
 - [x] receiver (UserResource)
-- [x] teaching_skill (UserSkillResource)
-- [x] learning_skill (UserSkillResource)
+- [x] teaching_skill (UserSkillResource) — nullable when no skill offered
+- [x] learning_skill (UserSkillResource) — nullable when no return skill
 - [x] message
 - [x] status
+- [x] reconfirmation_required_by (nullable: `'sender'` / `'receiver'`, null otherwise)
 - [x] created_at
 - [x] updated_at
 
@@ -1660,20 +1668,21 @@ The canonical rules live in FEATURES.MD → Exchange Requests (Phase 7). This ch
 - [x] Prevent N+1 queries
 
 ### Status Transitions
-- [x] `pending` → `accepted` (receiver accepts)
-- [x] `pending` → `declined` (receiver declines)
+- [x] `pending` → `accepted` (pending decider accepts — receiver for new requests, non-editor after an edit)
+- [x] `pending` → `declined` (pending decider declines)
 - [x] `pending` → `cancelled` (sender cancels)
 - [x] `accepted` → `cancelled` (sender cancels)
+- [x] `accepted` → `pending` (either party edits — re-confirmation by the non-editor)
 - [x] `accepted` → `completed` deferred to Phase 9 (Learning Sessions)
 
 ### Stage 2 Completion Criteria
 Stage 2 is complete when:
 
-- [x] Migration makes `learning_skill_id` nullable
-- [x] `ExchangeRequestController` created with all 6 endpoints
-- [x] `StoreExchangeRequestRequest` validates all fields
-- [x] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, and status transition rules
-- [x] `ExchangeRequestResource` returns sender, receiver, skills, message, status, timestamps
+- [x] Migrations make `learning_skill_id` / `teaching_skill_id` nullable and add `reconfirmation_required_by`
+- [x] `ExchangeRequestController` created with all 7 endpoints
+- [x] `StoreExchangeRequestRequest` / `UpdateExchangeRequestRequest` validate all fields
+- [x] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, re-confirmation, and status transition rules
+- [x] `ExchangeRequestResource` returns sender, receiver, skills, message, status, reconfirmation_required_by, timestamps
 - [x] Status transitions enforced (invalid transitions return 422)
 - [x] Idempotency enforced (replay on wrong source state returns 422)
 - [x] Ownership enforced (unauthorized actor returns 403)
@@ -1711,10 +1720,11 @@ Replace visual-only UI states with real API integration.
 
 ### Integration Contract
 Stage 3 consumes the backend API contract from Stage 2 as-is:
-- Endpoints: `GET /api/v1/me/exchange-requests`, `POST /api/v1/me/exchange-requests`, `GET /api/v1/me/exchange-requests/{id}`, `PUT .../{id}/accept`, `PUT .../{id}/decline`, `PUT .../{id}/cancel`
-- Create body: `receiver_id`, `teaching_skill_id`, `learning_skill_id?`, `message?`
+- Endpoints: `GET /api/v1/me/exchange-requests`, `POST /api/v1/me/exchange-requests`, `GET /api/v1/me/exchange-requests/{id}`, `PUT .../{id}` (update), `PUT .../{id}/accept`, `PUT .../{id}/decline`, `PUT .../{id}/cancel`
+- Create body: `receiver_id`, `teaching_skill_id?`, `learning_skill_id?`, `message?` (at least one skill required)
+- Update body: `teaching_skill_id?`, `learning_skill_id?`, `message?` (at least one skill required)
 - Response shape: `{ success, message, data: { exchange_request(s): [...] } }`
-- Resource structure: `ExchangeRequestResource` with sender, receiver, teaching_skill, learning_skill, message, status
+- Resource structure: `ExchangeRequestResource` with sender, receiver, teaching_skill, learning_skill, message, status, reconfirmation_required_by
 
 Stage 3 must not redesign the API contract. If the contract is insufficient, the issue must be resolved by updating Stage 2 documentation and re-implementing Stage 2, not by working around it in frontend code.
 
@@ -1729,6 +1739,7 @@ Stage 3 must not modify:
 ### API
 - [ ] Create `getExchangeRequests()`
 - [ ] Create `sendExchangeRequest(data)`
+- [ ] Create `updateExchangeRequest(id, data)`
 - [ ] Create `acceptExchangeRequest(id)`
 - [ ] Create `declineExchangeRequest(id)`
 - [ ] Create `cancelExchangeRequest(id)`
@@ -1736,22 +1747,24 @@ Stage 3 must not modify:
 ### Hooks
 - [ ] Create `useExchangeRequests()` (query, staleTime 30s, queryKey `["exchange-requests"]`)
 - [ ] Create `useSendExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+- [ ] Create `useUpdateExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
 - [ ] Create `useAcceptExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
 - [ ] Create `useDeclineExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
 - [ ] Create `useCancelExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
 
 ### Schemas
-- [ ] Create `sendExchangeRequestSchema` (Zod: receiver_id, teaching_skill_id, learning_skill_id?, message? max 500)
+- [ ] Create `sendExchangeRequestSchema` (Zod: receiver_id, teaching_skill_id?, learning_skill_id?, message? max 500; at least one of teaching/learning required)
 - [ ] Schema normalizes `message` — trims whitespace; trimmed-empty becomes `null` (matches backend; whitespace-only never sent as a non-empty string)
 
 ### Integration
 - [ ] Replace visual-only UI with real API data
 - [ ] Connect `ExchangeRequestsPage` list (Received / Sent tabs)
 - [ ] Connect pending count badge
-- [ ] Connect `ExchangeRequestCard` Accept / Decline / Cancel actions
-- [ ] Connect `SendExchangeRequestModal` submit (with one-way support)
+- [ ] Connect `ExchangeRequestCard` Accept / Decline / Cancel actions (decider-aware: pending decider sees Accept/Decline)
+- [ ] Connect `SendExchangeRequestModal` submit (with one-way support) and edit mode (sender or receiver)
+- [ ] Connect edit flow — Edit button on cards/details opens the modal prefilled; saving an accepted request shows "Awaiting sender/receiver confirmation" on the card
 - [ ] Populate Teaching Skill selector from `GET /me/skills` filtered to `type === "teaching"` (sender's skills)
-- [ ] Populate Learning Skill selector from `GET /users/{username}` → `data.user.user_skills.learning` (receiver's skills)
+- [ ] Populate Learning Skill selector from `GET /users/{username}` → `data.user.user_skills.teaching` (receiver's teaching skills)
 - [ ] Wire up ViewSkillsModal "Send Exchange Request" button
 - [ ] Wire up PublicProfilePage "Send Exchange Request" link
 - [ ] Wire up Dashboard "Active Exchanges" count (derived from `["exchange-requests"]` data)
@@ -1771,9 +1784,10 @@ Stage 3 is complete when:
 - [ ] `ExchangeRequestsPage` renders real request data in both tabs
 - [ ] Pending count badge reflects real data
 - [ ] Accept/Decline/Cancel actions update status via API and invalidate cache
+- [ ] Edit action updates skills/message via API and invalidates cache; accepted-edit shows the re-confirmation note
 - [ ] Mutations invalidate both `["exchange-requests"]` and the Dashboard query key
-- [ ] `SendExchangeRequestModal` sends real requests including one-way
-- [ ] Skill selectors use the documented data sources (`GET /me/skills` teaching; `GET /users/{username}` learning)
+- [ ] `SendExchangeRequestModal` sends real requests including one-way, and edits as either party
+- [ ] Skill selectors use the documented data sources (`GET /me/skills` teaching; `GET /users/{username}` teaching)
 - [ ] ViewSkillsModal and PublicProfilePage buttons initiate the real flow
 - [ ] Dashboard shows a real exchange count
 - [ ] Loading, empty, and error states are API-driven
@@ -1817,6 +1831,8 @@ Stage 4 must not:
 - [ ] Authenticated user can list exchange requests
 - [ ] User can send request with teaching + learning skill
 - [ ] User can send one-way exchange request (no learning_skill_id)
+- [ ] User can send request with teaching skill only (no learning_skill_id)
+- [ ] Cannot send request with no skills at all (422)
 - [ ] Cannot send duplicate active request (422)
 - [ ] Cannot send reverse-direction request while an active request exists (422)
 - [ ] Cannot send request to self (422)
@@ -1830,14 +1846,14 @@ Stage 4 must not:
 - [ ] User can view own exchange request
 - [ ] User cannot view unrelated exchange request (403)
 - [ ] Validation: missing receiver_id (422)
-- [ ] Validation: missing teaching_skill_id (422)
+- [ ] Validation: teaching_skill_id with wrong owner/type (422)
+- [ ] Validation: learning_skill_id with wrong owner/type (422)
 - [ ] Request appears in both sender and receiver lists
 - [ ] Idempotency: accept an accepted request (422)
 - [ ] Idempotency: decline a declined request (422)
 - [ ] Idempotency: cancel a cancelled request (422)
 - [ ] Idempotency: accept a cancelled request (422)
 - [ ] Idempotency: decline a completed request (422)
-- [ ] Eligibility: sender without a teaching skill (422)
 - [ ] Eligibility: receiver with unverified email (422)
 - [ ] Eligibility: receiver with incomplete profile (422)
 - [ ] Eligibility: receiver with no skills (422)
@@ -1848,6 +1864,17 @@ Stage 4 must not:
 - [ ] Concurrency: two simultaneous Accepts on the same pending request — exactly one succeeds (200, status → accepted); the other's conditional update matches zero rows and returns 422; the final DB state is consistent (single accepted record)
 - [ ] Concurrency: Accept racing Sender Cancel on the same pending request — exactly one transition succeeds; the loser returns 422
 - [ ] New request is allowed after a previous request is declined/cancelled/completed
+
+### Re-confirmation (accepted → edited → pending)
+- [ ] Receiver edits accepted request → status `pending`, `reconfirmation_required_by = 'sender'`
+- [ ] Sender edits accepted request → status `pending`, `reconfirmation_required_by = 'receiver'`
+- [ ] Sender (non-editor) can accept after receiver edit (200, status → accepted, reconfirmation cleared)
+- [ ] Sender (non-editor) can decline after receiver edit (200, status → declined)
+- [ ] Receiver (editor) cannot accept their own edit (403)
+- [ ] Receiver (editor) cannot decline their own edit (403)
+- [ ] Sender can edit a `pending` request (reconfirmation_required_by → `'receiver'`)
+- [ ] Receiver cannot edit a `pending` request (422)
+- [ ] Editing does not require both skills — at least one must remain (422 when both cleared)
 
 ### Frontend
 - [ ] Initial render
@@ -1860,6 +1887,7 @@ Stage 4 must not:
 - [ ] Decline interaction
 - [ ] Cancel interaction
 - [ ] Send request interaction (including one-way)
+- [ ] Edit request interaction (sender and receiver, including clearing "teach in return" with a None option)
 - [ ] Pending count badge
 - [ ] Responsive layout
 - [ ] Dark mode
