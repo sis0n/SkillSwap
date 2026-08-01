@@ -16,6 +16,8 @@ export interface LanguageEntry {
 interface LanguageAutocompleteProps {
   value: LanguageEntry[]
   onChange: (languages: LanguageEntry[]) => void
+  label?: string
+  required?: boolean
 }
 
 const proficiencyOptions = [
@@ -87,7 +89,7 @@ function ProficiencyBadge({
   )
 }
 
-export function LanguageAutocomplete({ value, onChange }: LanguageAutocompleteProps) {
+export function LanguageAutocomplete({ value, onChange, label, required }: LanguageAutocompleteProps) {
   const { data: allLanguages = [] } = useLanguages()
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
@@ -174,7 +176,10 @@ export function LanguageAutocomplete({ value, onChange }: LanguageAutocompletePr
 
   return (
     <div className="space-y-3">
-      <Label>Languages</Label>
+      <Label>
+        {label ?? "Languages"}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </Label>
 
       <div className="relative">
         <Input

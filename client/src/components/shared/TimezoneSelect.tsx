@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 interface TimezoneSelectProps {
   value?: string
   onChange: (timezone: string) => void
+  label?: string
+  required?: boolean
 }
 
 function getTimezones(): string[] {
@@ -91,7 +93,7 @@ function getTimezones(): string[] {
   ]
 }
 
-export function TimezoneSelect({ value, onChange }: TimezoneSelectProps) {
+export function TimezoneSelect({ value, onChange, label, required }: TimezoneSelectProps) {
   const [detected, setDetected] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
@@ -170,7 +172,10 @@ export function TimezoneSelect({ value, onChange }: TimezoneSelectProps) {
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="timezone">Timezone</Label>
+      <Label htmlFor="timezone">
+        {label ?? "Timezone"}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </Label>
 
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">

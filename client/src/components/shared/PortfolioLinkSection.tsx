@@ -50,9 +50,11 @@ function normalizeUrl(url: string): string {
 interface PortfolioLinkSectionProps {
   value: PortfolioLinkInput[]
   onChange: (links: PortfolioLinkInput[]) => void
+  label?: string
+  required?: boolean
 }
 
-export function PortfolioLinkSection({ value, onChange }: PortfolioLinkSectionProps) {
+export function PortfolioLinkSection({ value, onChange, label, required }: PortfolioLinkSectionProps) {
   const [adding, setAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [newPlatform, setNewPlatform] = useState("")
@@ -87,7 +89,10 @@ export function PortfolioLinkSection({ value, onChange }: PortfolioLinkSectionPr
 
   return (
     <div className="space-y-3">
-      <Label>Portfolio Links</Label>
+      <Label>
+        {label ?? "Portfolio Links"}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </Label>
 
       {value.length === 0 && !adding && (
         <p className="text-sm text-muted-foreground">No portfolio links yet.</p>

@@ -8,10 +8,11 @@ interface DialogProps {
   onClose: () => void
   title?: string
   children: ReactNode
+  footer?: ReactNode
   className?: string
 }
 
-export function Dialog({ open, onClose, title, children, className }: DialogProps) {
+export function Dialog({ open, onClose, title, children, footer, className }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -53,13 +54,12 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "relative z-10 mx-4 w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl",
-          "max-h-[calc(100vh-4rem)] overflow-y-auto",
+          "relative z-10 mx-4 flex max-h-[calc(100vh-4rem)] w-full max-w-lg flex-col rounded-xl border bg-card shadow-xl",
           "focus:outline-none",
           className,
         )}
       >
-        <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 border-b px-6 py-4">
           <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
           <button
             type="button"
@@ -70,7 +70,12 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
             <X className="size-5" />
           </button>
         </div>
-        {children}
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t bg-card px-6 py-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
