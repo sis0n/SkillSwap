@@ -7,17 +7,16 @@ import { Dialog } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Textarea } from "@/components/ui/textarea"
+import { getApiErrorMessage } from "@/lib/utils"
+import { usePublicProfile } from "@/features/profile/hooks/useProfile"
+import { useMySkills } from "@/features/skills/hooks/useSkills"
 import { cn } from "@/lib/utils"
 
-import {
-  PLACEHOLDER_LEARNING_SKILLS,
-  PLACEHOLDER_RECEIVER,
-  PLACEHOLDER_TEACHING_SKILLS,
-} from "../data/placeholder"
+import { useCreateExchangeRequest } from "../hooks/useExchangeRequests"
+import { sendExchangeRequestSchema } from "../schemas/exchangeRequestSchemas"
 import type {
   ExchangeRequestSkill,
   ExchangeRequestUser,
-  SendExchangeRequestData,
 } from "../types/exchange-request"
 import { getDisplayName, getInitials, getSkillDisplayName } from "../utils"
 
@@ -26,31 +25,32 @@ const MAX_MESSAGE_LENGTH = 500
 interface SendExchangeRequestModalProps {
   open: boolean
   onClose: () => void
-  onSubmit?: (data: SendExchangeRequestData) => void
-  isSaving?: boolean
-  error?: string | null
   receiver?: ExchangeRequestUser | null
-  teachingSkills?: ExchangeRequestSkill[]
-  teachingSkillsLoading?: boolean
-  learningSkills?: ExchangeRequestSkill[]
 }
 
 export function SendExchangeRequestModal({
   open,
   onClose,
-  onSubmit,
-  isSaving = false,
-  error = null,
-  receiver = PLACEHOLDER_RECEIVER,
-  teachingSkills = PLACEHOLDER_TEACHING_SKILLS,
-  teachingSkillsLoading = false,
-  learningSkills = PLACEHOLDER_LEARNING_SKILLS,
+  receiver = null,
 }: SendExchangeRequestModalProps) {
   const [teachingSkillId, setTeachingSkillId] = useState("")
   const [learningSkillId, setLearningSkillId] = useState("")
   const [isOneWay, setIsOneWay] = useState(false)
   const [message, setMessage] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const { data: mySkills = [], isLoading: mySkillsLoading } = useMySkills()
+  const { data: receiverProfile, isLoading: receiverSkillsLoading } =
+    usePublicProfile(receiver?.username ?? "")
+
+  const createMutation = useCreateExchangeRequest()
+
+  const teachingSkills: ExchangeRequestSkill[] = mySkills.filter(
+    (skill) => skill.type === "teaching",
+  )
+  const learningSkills: ExchangeRequestSkill[] =
+    receiverProfile?.user_skills?.learning ?? []
 
   useEffect(() => {
     if (open) {
@@ -59,6 +59,7 @@ export function SendExchangeRequestModal({
       setIsOneWay(false)
       setMessage("")
       setFieldErrors({})
+      setFormError(null)
     }
   }, [open])
 
@@ -72,59 +73,94 @@ export function SendExchangeRequestModal({
     label: `${getSkillDisplayName(skill)} \u00b7 ${skill.experience_level}`,
   }))
 
-  const receiverUser = receiver ?? PLACEHOLDER_RECEIVER
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!receiver) return
 
-    const errors: Record<string, string> = {}
-    if (!teachingSkillId) {
-      errors.teaching_skill_id = "Please select a skill you can teach."
-    }
-    if (!isOneWay && !learningSkillId) {
-      errors.learning_skill_id = "Please select a skill you would like to learn."
-    }
-    setFieldErrors(errors)
-    if (Object.keys(errors).length > 0) return
+    setFormError(null)
 
-    onSubmit?.({
-      receiver_id: receiverUser.id,
-      teaching_skill_id: Number(teachingSkillId),
-      learning_skill_id: isOneWay ? null : Number(learningSkillId),
-      message: message.trim() || null,
+    const result = sendExchangeRequestSchema.safeParse({
+      receiver_id: receiver.id,
+      teaching_skill_id: teachingSkillId ? Number(teachingSkillId) : undefined,
+      learning_skill_id: isOneWay
+        ? null
+        : learningSkillId
+          ? Number(learningSkillId)
+          : undefined,
+      message,
     })
+
+    if (!result.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of result.error.issues) {
+        const key = String(issue.path[0])
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
+      return
+    }
+
+    if (!isOneWay && !learningSkillId) {
+      setFieldErrors({
+        learning_skill_id: "Please select a skill you would like to learn.",
+      })
+      return
+    }
+
+    createMutation.mutate(
+      {
+        receiver_id: receiver.id,
+        teaching_skill_id: result.data.teaching_skill_id,
+        learning_skill_id: result.data.learning_skill_id ?? null,
+        message: result.data.message ?? null,
+      },
+      {
+        onSuccess: (response) => {
+          if (response.success) {
+            onClose()
+          } else {
+            setFormError(response.message)
+          }
+        },
+        onError: (err: unknown) => {
+          setFormError(getApiErrorMessage(err))
+        },
+      },
+    )
   }
 
   return (
     <Dialog open={open} onClose={onClose} title="Send Exchange Request">
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0" aria-hidden="true">
-            {receiverUser.profile?.avatar_url ? (
-              <img
-                src={receiverUser.profile.avatar_url}
-                alt=""
-                className="size-11 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                {getInitials(receiverUser.first_name, receiverUser.last_name)}
-              </div>
-            )}
+        {receiver && (
+          <div className="flex items-center gap-3">
+            <div className="shrink-0" aria-hidden="true">
+              {receiver.profile?.avatar_url ? (
+                <img
+                  src={receiver.profile.avatar_url}
+                  alt=""
+                  className="size-11 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                  {getInitials(receiver.first_name, receiver.last_name)}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">
+                {getDisplayName(receiver)}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                @{receiver.username}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">
-              {getDisplayName(receiverUser)}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              @{receiverUser.username}
-            </p>
-          </div>
-        </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="send-teaching-skill">Skill you can teach</Label>
-          {teachingSkillsLoading ? (
+          {mySkillsLoading ? (
             <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
               <LoadingSpinner size="sm" />
               Loading your skills...
@@ -155,7 +191,13 @@ export function SendExchangeRequestModal({
             type="checkbox"
             className="size-4 rounded border-input accent-primary"
             checked={isOneWay}
-            onChange={(e) => setIsOneWay(e.target.checked)}
+            onChange={(e) => {
+              setIsOneWay(e.target.checked)
+              if (e.target.checked) setFieldErrors((prev) => {
+                const { learning_skill_id: _removed, ...rest } = prev
+                return rest
+              })
+            }}
           />
           <Label htmlFor="send-one-way" className="cursor-pointer">
             I&apos;m not looking for anything in return
@@ -165,7 +207,12 @@ export function SendExchangeRequestModal({
         {!isOneWay && (
           <div className="space-y-2">
             <Label htmlFor="send-learning-skill">Skill you want to learn</Label>
-            {learningSkills.length === 0 ? (
+            {receiverSkillsLoading ? (
+              <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
+                <LoadingSpinner size="sm" />
+                Loading {receiver?.username || "user"}&apos;s skills...
+              </div>
+            ) : learningSkills.length === 0 ? (
               <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
                 This user has no learning skills listed.
               </p>
@@ -209,9 +256,12 @@ export function SendExchangeRequestModal({
           />
         </div>
 
-        {error && (
-          <p className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
+        {formError && (
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {formError}
           </p>
         )}
 
@@ -220,13 +270,13 @@ export function SendExchangeRequestModal({
             variant="outline"
             type="button"
             onClick={onClose}
-            disabled={isSaving}
+            disabled={createMutation.isPending}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? "Sending..." : "Send Request"}
-            {!isSaving && <Handshake className="size-4" />}
+          <Button type="submit" disabled={createMutation.isPending}>
+            {createMutation.isPending ? "Sending..." : "Send Request"}
+            {!createMutation.isPending && <Handshake className="size-4" />}
           </Button>
         </div>
       </form>
