@@ -18,6 +18,7 @@ import { useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { usePendingExchangeRequestCount } from "@/features/exchange-request/hooks/useExchangeRequests"
 import { useLogout } from "@/hooks/useAuth"
 import { useTheme } from "@/hooks/useTheme"
 import { useAuthStore } from "@/stores/authStore"
@@ -41,6 +42,7 @@ export function AuthenticatedLayout() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { data: pendingCount = 0 } = usePendingExchangeRequestCount()
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -67,6 +69,17 @@ export function AuthenticatedLayout() {
               >
                 <Icon className="size-4" />
                 {link.label}
+                {link.href === "/exchange-requests" && pendingCount > 0 && (
+                  <span
+                    className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      isActive
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -211,6 +224,17 @@ export function AuthenticatedLayout() {
                     >
                       <Icon className="size-4" />
                       {link.label}
+                      {link.href === "/exchange-requests" && pendingCount > 0 && (
+                        <span
+                          className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            location.pathname === link.href
+                              ? "bg-primary-foreground text-primary"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {pendingCount}
+                        </span>
+                      )}
                     </Link>
                   )
                 })}
