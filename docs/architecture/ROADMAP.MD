@@ -1109,7 +1109,7 @@ All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend AP
 Users may send an exchange request without offering a return skill. The sender checks "I'm not looking for anything in return" to indicate they're willing to teach without receiving a skill back.
 
 - [x] Frontend: Checkbox in skills modal (visual only — deferred; business logic belongs to Phase 7)
-- [ ] Backend: Accept one-way exchange requests (Phase 7)
+- [ ] Backend: Accept one-way exchange requests (see Phase 7 — Exchange Requests)
 
 ### Stage 1 Completion Criteria
 Stage 1 is complete when:
@@ -1441,18 +1441,481 @@ Phase 6 is fully complete only when Stages 1-5 are all complete:
 Status: Pending
 
 ### Goal
-Let users send, accept, and reject skill exchange match requests.
+Let users send, accept, and reject skill exchange match requests. Phase 7 is the first interactive feature that connects users after discovery. It introduces the exchange request lifecycle: pending → accepted/declined/cancelled, with one-way teaching support.
+
+### Overview
+Exchange Requests connect Discover-matched users (Phase 6) by letting the sender propose a skill swap: they offer one of their teaching skills and optionally request to learn one of the receiver's learning skills. The receiver accepts or declines; the sender can cancel. One-way teaching ("I'm not looking for anything in return") is supported via a nullable `learning_skill_id`.
+
+The `ExchangeRequest` model, migration, and factory already exist (Phase 2 database work). All service, controller, validation, and resource layers remain to be implemented.
+
+**Authentication**
+Exchange Requests require authentication. Unlike Discover (public browse), sending, listing, accepting, declining, and cancelling all require an authenticated user.
+
+**Dependencies**
+- Phase 5 — Skills (user_skills for teaching/learning selection)
+- Phase 6 — Discover (entry point for sending requests from search results and profiles)
+- Phase 8 — Messaging (conversations created after acceptance)
+- Phase 9 — Learning Sessions (sessions scheduled after acceptance)
+
+**Existing Placeholders**
+- Sidebar link `/exchange-requests` (AuthenticatedLayout)
+- "Send Exchange Request" button in ViewSkillsModal (disabled — "Coming in Phase 7")
+- "Send Exchange Request" link in PublicProfilePage (`href="#"`)
+- Dashboard "Active Exchanges" card (hardcoded 0)
+- One-way checkbox in ViewSkillsModal (visual only)
+- `ExchangeRequest` model, migration, factory (Phase 2)
+
+---
+
+# Stage 1 — Frontend (UI Foundation)
+### Goal
+Build the complete Exchange Requests interface with all visual UI states before integrating with the backend.
+
+### Dependencies
+- None. Stage 1 is the first implementation stage and builds UI independently.
+- References existing Phase 5/6 component and type conventions but does not depend on any Exchange Request backend.
+- Stage 1 must not wait for or assume any backend endpoint exists.
+
+### Types
+- [ ] Create `ExchangeRequestStatus` — Phase 7 uses only: `pending`, `accepted`, `declined`, `cancelled`. The `completed` status is introduced in Phase 9 (Learning Sessions) and must NOT be part of the Phase 7 frontend types, badges, filters, or component logic. It will be added during Phase 9 implementation.
+- [ ] Create `ExchangeRequest` interface (id, sender, receiver, teaching_skill, learning_skill, message, status, created_at, updated_at)
+- [ ] Create `SendExchangeRequestData` interface (receiver_id, teaching_skill_id, learning_skill_id?, message?)
+
+### Boundaries
+Stage 1 is strictly limited to frontend foundation. It must NOT include:
+
+- API requests or API client modules (e.g. `lib/api/exchange-requests.ts`)
+- React Query hooks or data fetching logic
+- Backend integration of any kind
+- Mock data, fake API responses, temporary API simulation, or hardcoded datasets
+- Business logic (status transitions, eligibility, ownership checks)
+- Temporary workarounds that simulate backend behavior
+
+All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend API).
+
+### Pages & Components
+- [ ] Create `ExchangeRequestsPage` (tabs: Received / Sent)
+- [ ] Create `ExchangeRequestCard` (user info, skills, message, status badge, action buttons)
+- [ ] Create `SendExchangeRequestModal` (teaching skill selector, learning skill selector, one-way checkbox, message input)
+
+### Routing
+- [ ] Lazy import + register `/exchange-requests` under `AuthenticatedLayout` in App.tsx
+- [ ] Sidebar link already exists — verify it maps to the route
+
+### User Interface
+- [ ] Tabbed interface (Received / Sent) — Received is the default tab
+- [ ] Pending count badge on Received tab
+- [ ] Status badge (pending/accepted/declined/cancelled — `completed` added in Phase 9)
+- [ ] Teaching skill display
+- [ ] Learning skill display (hidden for one-way requests)
+- [ ] "One-way exchange" label for requests without a learning skill
+- [ ] Accept / Decline buttons (receiver view)
+- [ ] Cancel button (sender view)
+- [ ] "New Request" button
+- [ ] Responsive layout
+
+### States
+- [ ] Loading spinner
+- [ ] Empty (received): "When someone sends you a request, it will appear here."
+- [ ] Empty (sent): "Requests you have sent will appear here."
+- [ ] Error state with retry button
+- [ ] Loaded state with request cards
+
+### Theme
+- [ ] Dark mode support
+
+### Responsive Layout
+- [ ] Mobile
+- [ ] Tablet
+- [ ] Desktop
+
+### Stage 1 Completion Criteria
+Stage 1 is complete when:
+
+- [ ] `ExchangeRequestsPage` with all UI states (loading, empty received, empty sent, error, loaded)
+- [ ] Responsive layout (mobile, tablet, desktop)
+- [ ] Reusable components (`ExchangeRequestCard`, `SendExchangeRequestModal`)
+- [ ] Status badge colors for all 5 statuses
+- [ ] Route registered at `/exchange-requests`
+- [ ] Sidebar navigation link maps to the route
+- [ ] Dark mode support
+
+Stage 1 explicitly does NOT include:
+
+- No backend implementation
+- No API requests
+- No React Query or data fetching hooks
+- No mock data or fake API simulation
+- No business logic (status transitions, ownership checks)
+- No temporary workarounds that simulate backend behavior
+
+---
+
+# Stage 2 — Backend API
+### Goal
+Implement the Exchange Request API with status transitions, ownership rules, and one-way exchange support.
+
+### Dependencies
+- Stage 1 completed — UI component structure and type definitions are available for reference.
+- Phase 2 database — `exchange_requests` table already exists.
+
+### Expected outputs
+- New migration making `exchange_requests.learning_skill_id` nullable (one-way exchange support)
+- `GET /api/v1/me/exchange-requests` endpoint — list user's requests
+- `POST /api/v1/me/exchange-requests` endpoint — create a request
+- `GET /api/v1/me/exchange-requests/{id}` endpoint — view a single request
+- `PUT /api/v1/me/exchange-requests/{id}/accept` — accept a pending request (receiver only)
+- `PUT /api/v1/me/exchange-requests/{id}/decline` — decline a pending request (receiver only)
+- `PUT /api/v1/me/exchange-requests/{id}/cancel` — cancel a pending/accepted request (sender only)
+- `StoreExchangeRequestRequest` form request with validation
+- `ExchangeRequestService` with status transition logic
+- `ExchangeRequestResource` with sender, receiver, and skill details
+- Backend tests passing for all status transitions, auth, and validation scenarios
+- API.md updated with endpoint documentation
+- API contract finalized and stable — no breaking changes after this stage
+
+### Boundaries
+Stage 2 must not modify:
+- Existing UI components, layouts, or pages
+- Frontend code of any kind (tsx, css, component state)
+- Client-side routing
+- Existing database tables (new migration only — make `learning_skill_id` nullable)
+- Existing models, controllers, or services from other phases
+
+### Database
+- [ ] Create migration: make `exchange_requests.learning_skill_id` nullable
+
+### Model (`ExchangeRequest.php`) — Already exists
+- [ ] Verify relationships: sender, receiver, teachingSkill, learningSkill, conversation, learningSessions
+- [ ] Ensure `$fillable` includes: sender_id, receiver_id, teaching_skill_id, learning_skill_id, message, status
+
+### Controller & Routes
+- [ ] Create `ExchangeRequestController`
+- [ ] Register `GET /api/v1/me/exchange-requests`
+- [ ] Register `POST /api/v1/me/exchange-requests`
+- [ ] Register `GET /api/v1/me/exchange-requests/{exchangeRequest}`
+- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/accept`
+- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/decline`
+- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/cancel`
+
+### Form Request
+- [ ] Create `StoreExchangeRequestRequest`
+
+Validation:
+- [ ] `receiver_id`: required, integer, exists:users,id
+- [ ] `teaching_skill_id`: required, integer, exists:user_skills,id
+- [ ] `learning_skill_id`: nullable, integer, exists:user_skills,id
+- [ ] `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; empty trimmed value stored as `null`
+
+### Service
+- [ ] Create `ExchangeRequestService`
+      Responsibilities:
+- [ ] List requests where user is sender or receiver (ordered by `created_at DESC, id DESC`)
+- [ ] List filtering by `role` (sender/receiver) and `status`
+- [ ] List pagination — `page` default 1, `per_page` default 20, max 50 (matches Discover contract)
+- [ ] Create request — teaching_skill belongs to sender and is "teaching" type
+- [ ] Create request — learning_skill belongs to receiver and is "learning" type
+- [ ] Bidirectional duplicate guard — at most one active request per unordered pair (regardless of direction or skill combination)
+- [ ] Self-request guard (sender_id !== receiver_id)
+- [ ] Sender eligibility check (email verified, profile completion ≥ 5, has a teaching skill)
+- [ ] Receiver eligibility check (email verified, profile completion ≥ 5, at least one skill)
+- [ ] Accept — receiver only, status must be pending (optimistic conditional update)
+- [ ] Decline — receiver only, status must be pending (optimistic conditional update)
+- [ ] Cancel — sender only, status must be pending or accepted (optimistic conditional update)
+
+### Business Rules
+The canonical rules live in FEATURES.MD → Exchange Requests (Phase 7). This checklist tracks their implementation:
+
+- [ ] State machine — only the allowed transitions execute; all others return 422
+- [ ] Terminal states (`declined`, `cancelled`, `completed`) accept no further transitions
+- [ ] `accepted → completed` is NOT exposed in Phase 7 (deferred to Phase 9)
+- [ ] Idempotency — replaying a transition on the wrong source state returns 422
+- [ ] Duplicate guard applies to the unordered pair, in both directions
+- [ ] Ordering contract — list returns `created_at DESC, id DESC`
+- [ ] Concurrency — create/accept/decline/cancel run atomically in a DB transaction; accept/decline/cancel use conditional updates against the expected source state (optimistic concurrency, 422 on zero-row update)
+- [ ] Message normalization — trim on create; empty trimmed value stored as `null`
+- [ ] Notifications — none sent in Phase 7 (email, push, in-app all out of scope)
+
+### Resource
+- [ ] Create `ExchangeRequestResource`
+      Include:
+- [ ] id
+- [ ] sender (UserResource)
+- [ ] receiver (UserResource)
+- [ ] teaching_skill (UserSkillResource)
+- [ ] learning_skill (UserSkillResource)
+- [ ] message
+- [ ] status
+- [ ] created_at
+- [ ] updated_at
+
+### Authorization
+- [ ] Controller-level ownership checks (no formal Policy — consistent with Phase 5 pattern)
+- [ ] Sender/receiver scoping on show, accept, decline, cancel
+
+### Query Design
+- [ ] Eager load sender.profile, receiver.profile, teachingSkill.skill, learningSkill.skill
+- [ ] Prevent N+1 queries
+
+### Status Transitions
+- [ ] `pending` → `accepted` (receiver accepts)
+- [ ] `pending` → `declined` (receiver declines)
+- [ ] `pending` → `cancelled` (sender cancels)
+- [ ] `accepted` → `cancelled` (sender cancels)
+- [ ] `accepted` → `completed` deferred to Phase 9 (Learning Sessions)
+
+### Stage 2 Completion Criteria
+Stage 2 is complete when:
+
+- [ ] Migration makes `learning_skill_id` nullable
+- [ ] `ExchangeRequestController` created with all 6 endpoints
+- [ ] `StoreExchangeRequestRequest` validates all fields
+- [ ] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, and status transition rules
+- [ ] `ExchangeRequestResource` returns sender, receiver, skills, message, status, timestamps
+- [ ] Status transitions enforced (invalid transitions return 422)
+- [ ] Idempotency enforced (replay on wrong source state returns 422)
+- [ ] Ownership enforced (unauthorized actor returns 403)
+- [ ] Eligibility enforced for sender and receiver (422 on violation)
+- [ ] List ordering follows `created_at DESC, id DESC`
+- [ ] List filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50) implemented
+- [ ] Optimistic concurrency — transitions run as conditional updates; zero-row updates return 422
+- [ ] Concurrency — create and transition operations run in DB transactions
+- [ ] API.md updated with endpoint documentation
+- [ ] All backend tests pass
+- [ ] API contract is finalized and stable
+
+Next stage (Stage 3) must not begin until all items above are satisfied.
+
+---
+
+# Stage 3 — Frontend Integration
+### Goal
+Replace visual-only UI states with real API integration.
+
+### Dependencies
+- Stage 1 completed — UI components, layout, and visual states exist.
+- Stage 2 completed — Backend API is deployed, tested, and contract is finalized.
+
+### Expected outputs
+- API client functions in `lib/api/exchange-requests.ts`
+- React Query hooks with query and mutations
+- `ExchangeRequestsPage` loads real request data
+- `ExchangeRequestCard` actions (Accept / Decline / Cancel) call the API
+- `SendExchangeRequestModal` submits real requests (including one-way)
+- ViewSkillsModal and PublicProfilePage buttons trigger the real send flow
+- Dashboard "Active Exchanges" card shows a real count
+- Loading, empty, and error states driven by real API responses
+- No mock data, no fake API, no temporary workarounds
+
+### Integration Contract
+Stage 3 consumes the backend API contract from Stage 2 as-is:
+- Endpoints: `GET /api/v1/me/exchange-requests`, `POST /api/v1/me/exchange-requests`, `GET /api/v1/me/exchange-requests/{id}`, `PUT .../{id}/accept`, `PUT .../{id}/decline`, `PUT .../{id}/cancel`
+- Create body: `receiver_id`, `teaching_skill_id`, `learning_skill_id?`, `message?`
+- Response shape: `{ success, message, data: { exchange_request(s): [...] } }`
+- Resource structure: `ExchangeRequestResource` with sender, receiver, teaching_skill, learning_skill, message, status
+
+Stage 3 must not redesign the API contract. If the contract is insufficient, the issue must be resolved by updating Stage 2 documentation and re-implementing Stage 2, not by working around it in frontend code.
+
+### Boundaries
+Stage 3 must not modify:
+- Backend controllers, services, resources, or form requests
+- Database schema or queries
+- Status transition or ownership rules
+- API response structure or validation rules
+- Any PHP or backend code
+
+### API
+- [ ] Create `getExchangeRequests()`
+- [ ] Create `sendExchangeRequest(data)`
+- [ ] Create `acceptExchangeRequest(id)`
+- [ ] Create `declineExchangeRequest(id)`
+- [ ] Create `cancelExchangeRequest(id)`
+
+### Hooks
+- [ ] Create `useExchangeRequests()` (query, staleTime 30s, queryKey `["exchange-requests"]`)
+- [ ] Create `useSendExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+- [ ] Create `useAcceptExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+- [ ] Create `useDeclineExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+- [ ] Create `useCancelExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+
+### Schemas
+- [ ] Create `sendExchangeRequestSchema` (Zod: receiver_id, teaching_skill_id, learning_skill_id?, message? max 500)
+- [ ] Schema normalizes `message` — trims whitespace; trimmed-empty becomes `null` (matches backend; whitespace-only never sent as a non-empty string)
+
+### Integration
+- [ ] Replace visual-only UI with real API data
+- [ ] Connect `ExchangeRequestsPage` list (Received / Sent tabs)
+- [ ] Connect pending count badge
+- [ ] Connect `ExchangeRequestCard` Accept / Decline / Cancel actions
+- [ ] Connect `SendExchangeRequestModal` submit (with one-way support)
+- [ ] Populate Teaching Skill selector from `GET /me/skills` filtered to `type === "teaching"` (sender's skills)
+- [ ] Populate Learning Skill selector from `GET /users/{username}` → `data.user.user_skills.learning` (receiver's skills)
+- [ ] Wire up ViewSkillsModal "Send Exchange Request" button
+- [ ] Wire up PublicProfilePage "Send Exchange Request" link
+- [ ] Wire up Dashboard "Active Exchanges" count (derived from `["exchange-requests"]` data)
+- [ ] Connect loading state
+- [ ] Connect empty states (received / sent)
+- [ ] Connect error state with retry
+
+### Cache Invalidation
+- [ ] Every successful mutation (create, accept, decline, cancel) invalidates `["exchange-requests"]` AND the Dashboard query key used by the project
+- [ ] Dashboard "Active Exchanges" card updates immediately after mutations (no manual refresh)
+
+### Stage 3 Completion Criteria
+Stage 3 is complete when:
+
+- [ ] API client functions exist and are used
+- [ ] React Query hooks integrate with the API
+- [ ] `ExchangeRequestsPage` renders real request data in both tabs
+- [ ] Pending count badge reflects real data
+- [ ] Accept/Decline/Cancel actions update status via API and invalidate cache
+- [ ] Mutations invalidate both `["exchange-requests"]` and the Dashboard query key
+- [ ] `SendExchangeRequestModal` sends real requests including one-way
+- [ ] Skill selectors use the documented data sources (`GET /me/skills` teaching; `GET /users/{username}` learning)
+- [ ] ViewSkillsModal and PublicProfilePage buttons initiate the real flow
+- [ ] Dashboard shows a real exchange count
+- [ ] Loading, empty, and error states are API-driven
+- [ ] No mock data, no fake API, no temporary workarounds remain in the codebase
+- [ ] Vite/TypeScript build passes clean (no exchange-request related errors)
+- [ ] ESLint — not configured in project (no exchange-request related issues)
+
+Next stage (Stage 4) must not begin until all items above are satisfied.
+
+---
+
+# Stage 4 — Testing & Hardening
+### Goal
+Validate the full Exchange Requests feature through automated tests across backend and frontend, verify integration correctness, and fix any issues found.
+
+### Dependencies
+- Stage 1 completed — UI components exist and are stable.
+- Stage 2 completed — Backend API is deployed, tested, and contract finalized.
+- Stage 3 completed — Frontend is fully integrated with the backend API.
+
+### Expected outputs
+- All backend test scenarios pass (auth, validation, status transitions, ownership)
+- All frontend test scenarios pass (render, interaction, states, responsive, dark mode)
+- Integration verified: frontend consumes backend contract correctly
+- No known regressions in existing functionality
+- Documentation synchronized across all files
+- Final review sign-off
+
+### Boundaries
+Stage 4 must not:
+- Introduce new features or behavioral changes
+- Modify backend business logic (status transitions, ownership rules)
+- Modify UI component structure or design
+- Change the API contract
+- Add new API endpoints, query parameters, or response fields
+- Alter database schema
 
 ### Backend
-- [ ] Exchange request API
+- [ ] Guest cannot list exchange requests (401)
+- [ ] Guest cannot create exchange requests (401)
+- [ ] Authenticated user can list exchange requests
+- [ ] User can send request with teaching + learning skill
+- [ ] User can send one-way exchange request (no learning_skill_id)
+- [ ] Cannot send duplicate active request (422)
+- [ ] Cannot send reverse-direction request while an active request exists (422)
+- [ ] Cannot send request to self (422)
+- [ ] Receiver can accept request (200, status → accepted)
+- [ ] Sender cannot accept request (403)
+- [ ] Receiver can decline request (200, status → declined)
+- [ ] Sender can cancel pending request (200, status → cancelled)
+- [ ] Sender can cancel accepted request (200, status → cancelled)
+- [ ] Receiver cannot cancel request (403)
+- [ ] Cannot accept declined/cancelled request (422)
+- [ ] User can view own exchange request
+- [ ] User cannot view unrelated exchange request (403)
+- [ ] Validation: missing receiver_id (422)
+- [ ] Validation: missing teaching_skill_id (422)
+- [ ] Request appears in both sender and receiver lists
+- [ ] Idempotency: accept an accepted request (422)
+- [ ] Idempotency: decline a declined request (422)
+- [ ] Idempotency: cancel a cancelled request (422)
+- [ ] Idempotency: accept a cancelled request (422)
+- [ ] Idempotency: decline a completed request (422)
+- [ ] Eligibility: sender without a teaching skill (422)
+- [ ] Eligibility: receiver with unverified email (422)
+- [ ] Eligibility: receiver with incomplete profile (422)
+- [ ] Eligibility: receiver with no skills (422)
+- [ ] Ordering: list returns newest-first (`created_at DESC, id DESC`)
+- [ ] Pagination: list honors `per_page` default 20, max 50, and `page`
+- [ ] Filtering: list filters by `role` (sender/receiver) and `status`
+- [ ] Message: whitespace-only message stored as `null`
+- [ ] Concurrency: two simultaneous Accepts on the same pending request — exactly one succeeds (200, status → accepted); the other's conditional update matches zero rows and returns 422; the final DB state is consistent (single accepted record)
+- [ ] Concurrency: Accept racing Sender Cancel on the same pending request — exactly one transition succeeds; the loser returns 422
+- [ ] New request is allowed after a previous request is declined/cancelled/completed
 
 ### Frontend
-- [ ] Request form
-- [ ] Inbox and response UI
+- [ ] Initial render
+- [ ] Loading state
+- [ ] Empty received state
+- [ ] Empty sent state
+- [ ] Error state
+- [ ] Tabs interaction (Received / Sent)
+- [ ] Accept interaction
+- [ ] Decline interaction
+- [ ] Cancel interaction
+- [ ] Send request interaction (including one-way)
+- [ ] Pending count badge
+- [ ] Responsive layout
+- [ ] Dark mode
 
-### Documentation
-- [ ] API.md
-- [ ] UI.md
+### Stage 4 Completion Criteria
+Stage 4 is complete when:
+
+- [ ] All backend test cases pass
+- [ ] All frontend test cases pass (manual verification — no test framework installed)
+- [ ] No regressions in existing test suites
+- [ ] Integration between frontend and backend verified
+- [ ] All issues found during testing are resolved
+- [ ] Documentation is synchronized
+
+Next stage (Stage 5) must not begin until all items above are satisfied.
+
+---
+
+# Stage 5 — Documentation Synchronization
+### Goal
+Ensure all documentation accurately reflects the implemented Exchange Requests feature and is consistent across all files.
+
+### Dependencies
+- Stage 4 completed — all testing is done and issues are resolved.
+
+### Expected outputs
+- `API.md` accurately documents the Exchange Request endpoints with correct request/response examples
+- `FEATURES.md` Exchange Requests section matches implemented behavior
+- `UI.md` Exchange Requests section matches the final UI
+- `ROADMAP.md` Stage 1-5 checklists are marked complete
+- All cross-references between documentation files are consistent
+- No stale or contradictory content remains
+
+### Boundaries
+Stage 5 must not:
+- Add new feature descriptions not implemented in Stages 1-4
+- Change documented API contracts beyond what was implemented
+- Introduce new requirements or scope
+- Generate any production code
+
+### Stage 5 Completion Criteria
+Stage 5 is complete when:
+
+- [ ] `API.md` is updated with final contract
+- [ ] `FEATURES.md` is updated with final behavior
+- [ ] `UI.md` is updated with final UI description
+- [ ] `ROADMAP.md` has all Stage 1-5 items marked complete
+- [ ] No documentation inconsistencies exist between files
+
+### Phase 7 Completion Criteria
+Phase 7 is fully complete only when Stages 1-5 are all complete:
+
+- [ ] Stage 1 — Frontend UI complete
+- [ ] Stage 2 — Backend API complete
+- [ ] Stage 3 — Frontend Integration complete
+- [ ] Stage 4 — Testing & Hardening complete
+- [ ] Stage 5 — Documentation Synchronization complete
+- [ ] No known regressions remain
 
 ---
 ## Phase 8 — Messaging

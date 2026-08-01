@@ -370,9 +370,17 @@ Relationships:
 | sender_id         | bigint FK(users)                                    |
 | receiver_id       | bigint FK(users)                                    |
 | teaching_skill_id | bigint FK(user_skills)                              |
-| learning_skill_id | bigint FK(user_skills)                              |
+| learning_skill_id | bigint FK(user_skills) — nullable (Phase 7: one-way exchange support) |
 | message           | text                                                |
 | status            | enum(pending,accepted,declined,cancelled,completed) |
+
+**Status** follows the Exchange Request state machine (see FEATURES.MD → Exchange Requests):
+
+- `pending` → `accepted` | `declined` | `cancelled`
+- `accepted` → `cancelled` | `completed` (Phase 9)
+- `declined` / `cancelled` / `completed` are terminal
+
+**Note (Phase 7):** a new migration makes `learning_skill_id` nullable to support one-way teaching. The MVP enforces "at most one active request per unordered user pair" in the service layer; a database-level unique partial index on `(LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id))` where `status IN (pending, accepted)` is a candidate hardening, but it is NOT required for the MVP.
 
 ### conversations
 

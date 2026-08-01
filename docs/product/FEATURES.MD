@@ -396,7 +396,7 @@ A user can have a maximum of **30 skills** total. Attempting to add a 31st skill
 
 #### Deleting Skills
 
-A skill can only be removed if it is **not** referenced by an active exchange request:
+A skill can only be removed if it is **not** referenced by an active exchange request. Here "active" matches the canonical **active request** definition (status `pending` or `accepted` — see Exchange Requests → Duplicate Request Rules):
 
 | Exchange Request Status | Deletion Allowed |
 | ----------------------- | ---------------- |
@@ -901,11 +901,246 @@ Support:
 
 ---
 
-## Matching
+## Exchange Requests (Phase 7)
 
-- [ ] Send Request
-- [ ] Accept Request
-- [ ] Reject Request
+### Description
+
+Exchange Requests allow Discover-matched users to initiate a skill swap. The sender proposes to teach one of their teaching skills and optionally requests to learn one of the receiver's learning skills. The receiver can accept or decline; the sender can cancel. One-way teaching (no return skill required) is supported via a nullable `learning_skill_id`.
+
+**Optional message handling:** the `message` field is optional. It is trimmed of leading/trailing whitespace before validation; if the trimmed value is empty, it is stored as `null`. Whitespace-only messages are never persisted as non-empty strings. The frontend applies the same normalization before submission so both layers behave consistently.
+
+### Terminology
+
+Two terms are used throughout Phase 7 documentation. They are defined once here and referenced consistently everywhere else (API.MD, UI.MD, ROADMAP.MD, DATABASE.MD) without redefinition.
+
+**Active Request**
+
+- Statuses: `pending`, `accepted`
+- Purpose: duplicate-request guard. At most one active request may exist per unordered pair of users (in either direction), regardless of skill combination.
+- Counter-example: a request that is `declined`, `cancelled`, or `completed` is NOT active and does not block a new request between the pair.
+
+**Active Exchange**
+
+- Status: `accepted` only
+- Purpose: Dashboard "Active Exchanges" card. The count is derived from exchange requests where the current user is sender or receiver AND status = `accepted`.
+- Counter-example: `pending` requests are NOT active exchanges (they appear on the Exchange Requests page Received tab with a pending badge).
+
+An `accepted` request is simultaneously an Active Request (for the duplicate guard) and an Active Exchange (for the Dashboard). These are two distinct concepts with different purposes and must not be conflated.
+
+### Lifecycle (State Machine)
+
+The state machine is the single source of truth for backend, frontend, tests, and API documentation.
+
+```
+pending
+├── accepted    (receiver accepts)  — Phase 7
+├── declined    (receiver declines) — Phase 7
+└── cancelled   (sender cancels)    — Phase 7
+
+accepted
+├── cancelled   (sender cancels)    — Phase 7
+└── completed   (Phase 9 — Learning Sessions) — future phase
+
+declined   → terminal
+cancelled  → terminal
+completed  → terminal
+```
+
+**Allowed transitions (Phase 7):**
+
+- `pending → accepted` (receiver)
+- `pending → declined` (receiver)
+- `pending → cancelled` (sender)
+- `accepted → cancelled` (sender)
+
+**Deferred to future phases:**
+
+- `accepted → completed` (Phase 9 — Learning Sessions). Phase 7 exposes no endpoint that transitions a request to `completed`.
+
+**Forbidden transitions (all return 422):**
+
+- `pending → pending` (no-op)
+- `accepted → accepted` (replay)
+- `declined → declined` (replay)
+- `cancelled → cancelled` (replay)
+- `completed → completed` (replay)
+- `accepted → declined`
+- `declined → accepted`
+- `cancelled → accepted`
+- `completed → accepted`
+- `declined → cancelled`
+- `cancelled → declined`
+- `completed → cancelled`
+- `completed → declined`
+- `pending → completed`
+
+**Terminal states:** `declined`, `cancelled`, `completed`. No transition leaves a terminal state.
+
+### Ownership Rules
+
+Exactly who may perform each action. This section is the single authority — all other documentation references it instead of redefining permissions.
+
+| Action  | Sender | Receiver | Other users |
+| ------- | ------ | -------- | ----------- |
+| Create  | ✅     | ❌       | ❌ (403)    |
+| Accept  | ❌     | ✅       | ❌ (403)    |
+| Decline | ❌     | ✅       | ❌ (403)    |
+| Cancel  | ✅     | ❌       | ❌ (403)    |
+| List    | ✅ (own requests) | ✅ (own requests) | ❌ (403) |
+| View    | ✅ (part of request) | ✅ (part of request) | ❌ (403) |
+
+- **Create:** only the authenticated sender. The `sender_id` is always the authenticated user's id.
+- **Accept / Decline:** receiver only.
+- **Cancel:** sender only.
+- **List / View:** sender or receiver only. A user who is not part of the request receives 403.
+- No administrative bypass exists in the MVP.
+
+**Lookup flow:** for any single-resource operation, ownership is enforced via: Route Model Binding → resolve the request by `{id}` (404 if not found) → ownership validation (authenticated user must be sender or receiver) → 403 for unauthorized users → role-specific checks (receiver for accept/decline, sender for cancel) → 403 for the wrong party. See API.MD → Ownership Lookup Flow for the full sequence. No formal Laravel Policy is used — ownership is enforced in the controller, consistent with the Phase 5 pattern.
+
+### Duplicate Request Rules
+
+At most ONE active exchange request may exist between a given pair of users, regardless of direction or skill combination.
+
+- A → B is blocked while any active request exists between A and B in EITHER direction.
+- B → A is likewise blocked under the same condition.
+- The guard applies to the unordered pair `{sender, receiver}`, not the ordered tuple.
+- Different skill combinations do NOT create separate requests — the pair-level guard applies regardless of which skills are involved.
+- After a request becomes `declined`, `cancelled`, or `completed`, either party may send a new request.
+- Violation: 422, message "An active exchange request already exists between you and this user."
+
+**Active request** (duplicate guard) = status IN (`pending`, `accepted`) — see Terminology.
+
+### Eligibility Rules
+
+Eligibility is enforced at create time and does NOT rely solely on Discover filtering.
+
+**Sender must satisfy all of:**
+
+1. Authenticated (enforced by the route).
+2. Email verified.
+3. Profile completion score ≥ 5 (feature gating — see Profile section).
+4. Has at least one Discover-eligible teaching skill — the `teaching_skill_id` must belong to the sender and have type `teaching`.
+
+**Receiver must satisfy all of:**
+
+1. `receiver_id` exists.
+2. Receiver is not the authenticated sender.
+3. Receiver email verified.
+4. Receiver profile completion score ≥ 5 (same rule as Discover).
+5. Receiver has at least one Discover-eligible skill (approved user_skill of any type).
+
+**Violation:** 422 with a specific message (e.g., "This user is not eligible to receive exchange requests.").
+
+### Idempotency Rules
+
+Transition endpoints are NOT idempotent. Calling a transition when the request is not in the required source state returns **422** (not 409, not 200). The same single rule applies to every transition and every replay:
+
+- Accept an already-accepted request → 422
+- Decline an already-declined request → 422
+- Cancel an already-cancelled request → 422
+- Accept a cancelled request → 422
+- Decline a completed request → 422
+- Cancel a completed request → 422
+
+Rationale: a replay indicates the client believes the state differs from reality; returning 422 surfaces the conflict instead of silently succeeding.
+
+### Active Exchanges (Dashboard)
+
+**Active exchange = exchange request with status `accepted`** (see Terminology — Active Exchange).
+
+- The Dashboard "Active Exchanges" card counts requests where the user is sender or receiver AND status = `accepted`.
+- `pending` requests are NOT counted; they are shown on the Exchange Requests page Received tab with a pending badge.
+- `declined`, `cancelled`, and `completed` requests are never counted as active.
+
+Terminology note: "active request" (duplicate guard, status IN pending/accepted) is a DIFFERENT definition from "active exchange" (status = accepted). Both are defined in the Terminology section and must not be conflated.
+
+### Ordering
+
+The list endpoint returns requests newest-first:
+
+```
+ORDER BY created_at DESC, id DESC
+```
+
+`id DESC` is the deterministic tie-breaker when `created_at` collides. The frontend may rely on this contract without applying its own sorting.
+
+### List Query Parameters & Pagination
+
+The list endpoint (`GET /api/v1/me/exchange-requests`) supports filtering and pagination via query parameters:
+
+| Parameter | Type    | Default | Description                                              |
+| --------- | ------- | ------- | -------------------------------------------------------- |
+| role      | enum    | none    | Filter by the user's role in the request: `sender` or `receiver`. Omitting it returns both. |
+| status    | enum    | none    | Filter by status: `pending`, `accepted`, `declined`, `cancelled`, `completed`. Omitting it returns all. |
+| page      | integer | 1       | Page number.                                             |
+| per_page  | integer | 20      | Results per page. Maximum 50.                            |
+
+**Pagination contract:** identical to Discover — `page` defaults to 1, `per_page` defaults to 20, `per_page` maximum is 50. Values outside these bounds are clamped. Pagination metadata uses the standard `meta` wrapper (`current_page`, `last_page`, `per_page`, `total`). The ordering contract (`created_at DESC, id DESC`) applies within every page.
+
+### Concurrency
+
+All create and transition operations must execute atomically inside a database transaction.
+
+**Optimistic concurrency (conditional updates):** Accept, Decline, and Cancel must perform conditional updates against the expected source state — e.g., `UPDATE ... SET status = 'accepted' WHERE id = ? AND status = 'pending'`. If a concurrent request changed the status first, the conditional update affects zero rows and the operation must fail with HTTP 422 and a message indicating the request is no longer in the expected state. No partial update may occur.
+
+- Sender cancels while receiver accepts → exactly one transition succeeds; the loser's conditional update matches zero rows and returns 422.
+- Receiver accepts twice simultaneously → exactly one succeeds; the other returns 422.
+- Two duplicate create requests arrive together → exactly one succeeds; the other returns 422 (the duplicate guard must be enforced such that concurrent duplicates cannot both succeed).
+
+Implementation of these guarantees is deferred to Stage 2 (Backend API).
+
+### Notifications (Out of Scope)
+
+Phase 7 sends NO notifications of any kind:
+
+- No email notifications.
+- No push notifications.
+- No in-app notifications.
+
+Receivers discover new requests only by visiting the Exchange Requests page (Received tab). Notifications are deferred to a future phase (see the Notifications section).
+
+### Backend Tasks
+
+- [ ] Make `learning_skill_id` nullable (new migration)
+- [ ] Create `ExchangeRequestService` with CRUD and status transition methods
+- [ ] Create `ExchangeRequestController` (index, show, store, accept, decline, cancel)
+- [ ] Create `ExchangeRequestResource`
+- [ ] Create `StoreExchangeRequestRequest` with validation rules
+- [ ] Register routes under `me/exchange-requests`
+- [ ] Implement list filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50)
+- [ ] Implement optimistic concurrency (conditional updates) for accept, decline, cancel
+- [ ] Write tests (19+ test cases covering all status transitions, auth, validation, idempotency, eligibility, concurrency)
+
+### Frontend Tasks
+
+- [ ] Create `lib/api/exchange-requests.ts` API module (with `role`/`status` filter params)
+- [ ] Create `features/exchange-request/types/` TypeScript interfaces (Phase 7 statuses: pending, accepted, declined, cancelled — `completed` is Phase 9)
+- [ ] Create `features/exchange-request/hooks/useExchangeRequests.ts` hooks
+- [ ] Create `features/exchange-request/schemas/exchangeRequestSchemas.ts` Zod schemas (normalizes `message`: trim, empty → null)
+- [ ] Create `ExchangeRequestCard` component
+- [ ] Create `SendExchangeRequestModal` component (Teaching selector from `GET /me/skills` type teaching; Learning selector from `GET /users/{username}` user_skills.learning)
+- [ ] Create `ExchangeRequestsPage` with tabs (Received / Sent — Received is the default tab)
+- [ ] Add route `/exchange-requests` to App.tsx
+- [ ] Wire up "Send Exchange Request" buttons in ViewSkillsModal, PublicProfilePage
+- [ ] Wire up Dashboard "Active Exchanges" card with count derived from the Exchange Requests endpoint
+- [ ] Invalidate `["exchange-requests"]` and the Dashboard query key after every successful mutation (create, accept, decline, cancel)
+
+### Skill Deletion Relationship
+
+Skills participating in active requests or exchanges cannot be deleted. This is the Phase 5 rule, referenced here for completeness (the authoritative rule lives in the Skills section — see "Deleting Skills"):
+
+- `pending` or `accepted` — deletion blocked (422). These are **active requests** (see Terminology).
+- `declined`, `cancelled`, `completed` — deletion allowed.
+
+Accepted exchanges continue to depend on the skills referenced by their `teaching_skill_id` / `learning_skill_id`. The block exists to preserve exchange integrity: a skill cannot be removed while an active request or exchange still references it. Do not duplicate this logic — reuse the existing Phase 5 `UserSkillService` guard.
+
+### API Resource Stability
+
+`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning or replacing its current structure. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed.
+
+### Dashboard Active Exchanges Source
+
+For the MVP, the Dashboard "Active Exchanges" count is DERIVED from the existing Exchange Requests endpoint (`GET /api/v1/me/exchange-requests`), not from a dedicated dashboard endpoint. The frontend filters the response to requests where the current user is sender or receiver AND status = `accepted`, and counts them. No new dashboard API is introduced in Phase 7.
 
 ---
 

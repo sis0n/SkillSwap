@@ -64,13 +64,15 @@ Never:
 
 # Current Development Phase
 
-Phase 4 — User Profiles
+Phase 7 — Exchange Requests (Pending)
 
 ---
 
 # Current Objective
 
-Implement the complete User Profiles module for the MVP.
+Implement the complete Exchange Requests module for the MVP, following the Phase 7 roadmap stages (Stage 1 — Frontend UI Foundation → Stage 2 — Backend API → Stage 3 — Frontend Integration → Stage 4 — Testing & Hardening → Stage 5 — Documentation Synchronization).
+
+The canonical business rules are defined in FEATURES.MD → Exchange Requests (Phase 7): state machine, ownership, duplicate, idempotency, eligibility, ordering, concurrency, and notifications deferral.
 
 ---
 
@@ -78,22 +80,25 @@ Implement the complete User Profiles module for the MVP.
 
 ## Backend
 
-- Profile API
-- Update profile
-- Avatar upload
-- Availability
-- Experience level
-- Location
+- Make `exchange_requests.learning_skill_id` nullable (migration)
+- ExchangeRequestService (create, accept, decline, cancel, list with `role`/`status` filtering, pagination, and ordering contract)
+- ExchangeRequestController (index, show, store, accept, decline, cancel)
+- ExchangeRequestResource
+- StoreExchangeRequestRequest
+- Routes under `me/exchange-requests`
+- Enforce state machine, ownership, bidirectional duplicate guard, idempotency, and eligibility
+- Enforce optimistic concurrency (conditional updates on transitions, 422 on zero-row update) and message trim/empty→null
 
 ## Frontend
 
-- Profile page
-- Edit profile page
-- Avatar component
-- Availability component
-- Responsive layout
-- Light mode
-- Dark mode
+- API module `lib/api/exchange-requests.ts`
+- Types, hooks, Zod schemas in `features/exchange-request/` (Phase 7 statuses: pending, accepted, declined, cancelled — `completed` is Phase 9)
+- ExchangeRequestsPage (Received / Sent tabs, Received default)
+- ExchangeRequestCard, SendExchangeRequestModal (Teaching selector from `GET /me/skills`; Learning selector from `GET /users/{username}`)
+- Wire up ViewSkillsModal and PublicProfilePage entry points
+- Wire up Dashboard "Active Exchanges" count (derived from Exchange Requests endpoint, status = accepted)
+- Invalidate `["exchange-requests"]` and the Dashboard query key after every successful mutation
+- Zod schema normalizes `message` (trim, empty → null) to match the backend
 
 ## Documentation
 
@@ -102,19 +107,18 @@ Update when necessary:
 - API.md
 - FEATURES.md
 - UI.md
-- DESIGN_SYSTEM.md
+- DATABASE.md
 - ROADMAP.md
 
 ## Excluded
 
 Do not implement:
 
-- Skills
-- Discover
-- Exchange Requests
-- Messaging
-- Learning Sessions
-- Reviews
+- Notifications (email, push, in-app) — deferred
+- Messaging (Phase 8)
+- Learning Sessions (Phase 9)
+- Reviews (Phase 10)
+- `accepted → completed` transition (Phase 9)
 
 Unless explicitly requested.
 

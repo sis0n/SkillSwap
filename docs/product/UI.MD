@@ -275,6 +275,14 @@ Provide an overview of the user's activity.
 - Recent Messages
 - Quick Actions
 
+### Active Exchanges
+
+**Active exchange = exchange request with status `accepted`** (see FEATURES.MD → Terminology — Active Exchange).
+
+The "Active Exchanges" card counts requests where the current user is sender or receiver AND status is `accepted`. Pending requests are NOT counted — they appear on the Exchange Requests page Received tab with a pending badge. Declined, cancelled, and completed requests are never counted.
+
+**Data source:** for the MVP the count is DERIVED from the existing `GET /api/v1/me/exchange-requests` endpoint (frontend filters to `accepted` and counts). No dedicated dashboard endpoint is introduced in Phase 7.
+
 ### APIs
 
 GET /api/v1/auth/me
@@ -632,26 +640,85 @@ GET /api/v1/skills (for skill search)
 
 ### Purpose
 
-Manage incoming and outgoing exchange requests.
+Manage incoming and outgoing exchange requests. Users send a skill swap proposal (teach one skill, optionally learn another), and the receiver accepts or declines; the sender can cancel. Supports one-way teaching ("I'm not looking for anything in return").
+
+### Route
+
+`/exchange-requests` (authenticated)
 
 ### Components
 
-- Request Cards
-- Accept Button
-- Decline Button
-- Cancel Button
+- **ExchangeRequestsPage** — main page with Received / Sent tabs, pending count badge, and "New Request" button. **Received is the default tab** on first visit; Sent is shown only when the user explicitly switches.
+- **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons (Accept / Decline for receiver, Cancel for sender)
+- **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, one-way checkbox, message input)
+- **StatusBadge** — color-coded badge for pending/accepted/declined/cancelled (`completed` is added in Phase 9 and must not be rendered in Phase 7)
 
-### APIs
+### States
 
-GET /api/v1/exchange-requests
+#### ExchangeRequestsPage
 
-POST /api/v1/exchange-requests
+- **Loading:** Centered spinner
+- **Empty (received):** Centered empty state — "When someone sends you a request, it will appear here."
+- **Empty (sent):** Centered empty state — "Requests you have sent will appear here."
+- **Error:** Error message with retry button — "Unable to load exchange requests."
+- **Loaded:** Tabbed interface (Received / Sent) with **Received active by default**. Received tab shows a pending count badge when pending incoming requests exist. "New Request" button opens SendExchangeRequestModal.
 
-PATCH /api/v1/exchange-requests/{id}/accept
+#### ExchangeRequestCard
 
-PATCH /api/v1/exchange-requests/{id}/decline
+- **Pending (received):** Shows Accept (primary) and Decline (outline) buttons
+- **Pending (sent):** Shows Cancel (outline) button
+- **Accepted/Declined/Cancelled/Completed:** No action buttons; shows request date
+- **One-way:** Learning skill row replaced with "One-way exchange (no return skill requested)" italic label
 
-PATCH /api/v1/exchange-requests/{id}/cancel
+#### SendExchangeRequestModal
+
+- **Loading:** Teaching skill selector shows spinner while fetching user's skills
+- **No teaching skills:** "You need to add a teaching skill first."
+- **No receiver learning skills:** "This user has no learning skills listed." (learning selector disabled)
+- **One-way checkbox:** Hides the learning skill selector when checked
+- **Saving:** Send button shows spinner, form disabled
+- **Validation error:** Inline error message — "Failed to send request."
+- **Success:** Modal closes, request list refreshes
+
+**Skill selector data sources:**
+- **Teaching Skill selector (sender's skills):** populated from `GET /api/v1/me/skills`, filtered client-side to `type === "teaching"` (the authenticated user is the sender). The backend create endpoint requires the chosen skill to belong to the sender and be type "teaching" — the selector only offers skills that satisfy this.
+- **Learning Skill selector (receiver's skills):** populated from the receiver's public profile `GET /api/v1/users/{username}` → `data.user.user_skills.learning`. The username comes from the current context (ViewSkillsModal or Public Profile page). The backend create endpoint requires the chosen skill to belong to the receiver and be type "learning" — the selector only offers skills that satisfy this.
+- Both selectors must render the selected skill's name and experience level, and submit the underlying `user_skill` id (`teaching_skill_id`, `learning_skill_id`).
+
+**Message normalization (frontend):** the message input applies the same normalization as the backend before submission — trimmed of leading/trailing whitespace, and a trimmed-empty value is sent as `null` (omitted/not sent as an empty string). The Zod schema normalizes on submit so both layers behave consistently. This matches the backend rule: whitespace-only messages are never persisted as non-empty strings.
+
+### API Alignment
+
+Endpoints use the `me/` prefix (user-owned resource) and `PUT` for state changes, matching the established API convention.
+
+GET /api/v1/me/exchange-requests
+
+POST /api/v1/me/exchange-requests
+
+GET /api/v1/me/exchange-requests/{id}
+
+PUT /api/v1/me/exchange-requests/{id}/accept
+
+PUT /api/v1/me/exchange-requests/{id}/decline
+
+PUT /api/v1/me/exchange-requests/{id}/cancel
+
+**Cache invalidation:** after every successful mutation — Create Request, Accept, Decline, Cancel — the frontend invalidates:
+- `["exchange-requests"]` (the Exchange Requests list query), and
+- the Dashboard query key used by the project (e.g. `["dashboard"]`, or the dashboard summary key that drives the "Active Exchanges" card).
+
+This guarantees the Dashboard "Active Exchanges" card and the Exchange Requests list reflect the new state immediately, without a manual refresh. Invalidation must use the project's existing React Query cache conventions (see Phase 6 Discover integration for the established pattern).
+
+### Entry Points
+
+- **ViewSkillsModal** — "Send Exchange Request" button opens SendExchangeRequestModal prefilled with the Discover user's skills
+- **Public Profile** — "Send Exchange Request" button opens the same flow for a profile
+- **Sidebar** — "Exchange Requests" link navigates to `/exchange-requests`
+- **Dashboard** — "Active Exchanges" card shows the count of accepted requests (see Dashboard → Active Exchanges)
+
+### Notifications
+
+Phase 7 sends no notifications (no email, no push, no in-app alerts). Users discover new requests only by visiting the Exchange Requests page — the Received tab shows a pending badge when pending incoming requests exist.
 
 ---
 

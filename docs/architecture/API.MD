@@ -1767,21 +1767,231 @@ Without seeded data, the discover endpoint returns empty results (200 OK, `total
 
 # Exchange Requests
 
-| Method | Endpoint                        |
-| ------ | ------------------------------- |
-| GET    | /exchange-requests              |
-| GET    | /exchange-requests/{id}         |
-| POST   | /exchange-requests              |
-| PATCH  | /exchange-requests/{id}/accept  |
-| PATCH  | /exchange-requests/{id}/decline |
-| PATCH  | /exchange-requests/{id}/cancel  |
+All exchange request endpoints are authenticated. They are scoped to the authenticated user via the `me/` prefix. The canonical business rules (state machine, ownership, duplicate, idempotency, eligibility, ordering, concurrency, notifications) live in FEATURES.MD → Exchange Requests (Phase 7); this section defines only the API contract.
 
-Create Body
+**Terminology:** "active request" (duplicate guard) = status IN (`pending`, `accepted`); "active exchange" (Dashboard) = status `accepted` only. These are defined in FEATURES.MD → Terminology and are not redefined here.
 
-- receiver_id
-- teaching_skill_id
-- learning_skill_id
-- message
+| Method | Endpoint                                        | Description                          |
+| ------ | ----------------------------------------------- | ------------------------------------ |
+| GET    | /me/exchange-requests                           | List user's exchange requests        |
+| GET    | /me/exchange-requests/{id}                      | Show a single exchange request       |
+| POST   | /me/exchange-requests                           | Create a new exchange request        |
+| PUT    | /me/exchange-requests/{id}/accept               | Accept a pending request (receiver)  |
+| PUT    | /me/exchange-requests/{id}/decline              | Decline a pending request (receiver) |
+| PUT    | /me/exchange-requests/{id}/cancel               | Cancel a request (sender)            |
+
+### Canonical HTTP Response Codes
+
+All Exchange Request endpoints use the following codes. Endpoint descriptions below reference this table rather than redefining codes individually.
+
+| Code | Meaning                                             |
+| ---- | --------------------------------------------------- |
+| 200  | Success                                             |
+| 201  | Created                                             |
+| 401  | Unauthenticated                                     |
+| 403  | Forbidden (ownership violation)                     |
+| 404  | Resource not found or intentionally hidden          |
+| 422  | Validation failure or business rule violation (including idempotency replays and concurrency conflicts) |
+
+**Note:** a request the user is not part of returns 404 or 403 depending on context — 403 when the resource exists but ownership fails, 404 when the resource does not exist or is intentionally hidden.
+
+### Ownership Matrix
+
+| Action  | Sender | Receiver | Other users |
+| ------- | ------ | -------- | ----------- |
+| Create  | ✅     | ❌ (403)  | ❌ (403)    |
+| Accept  | ❌ (403)| ✅       | ❌ (403)    |
+| Decline | ❌ (403)| ✅       | ❌ (403)    |
+| Cancel  | ✅     | ❌ (403)  | ❌ (403)    |
+| List    | ✅ (own) | ✅ (own) | ❌ (403)    |
+| View    | ✅ (part) | ✅ (part) | ❌ (403)  |
+
+### Ownership Lookup Flow
+
+For any single-resource operation (Show, Accept, Decline, Cancel), the ownership check follows this exact flow:
+
+```
+Route Model Binding
+  → resolve the ExchangeRequest by {id} from the URL
+  → 404 if no request matches {id}
+  → ownership validation
+  → compare authenticated user (Auth::id()) against the resolved request's sender_id / receiver_id
+  → if the user is neither sender nor receiver → 403 Forbidden
+  → if the user is a party (sender or receiver) → proceed with the action, then enforce role-specific rules
+     (e.g. only the receiver may accept/decline; only the sender may cancel) → 403 for the wrong party
+```
+
+Notes:
+- Binding is implicit (Laravel route model binding on the `{id}` / route parameter). A nonexistent id returns 404 before any ownership logic runs.
+- Ownership (party check) is distinct from role (sender vs receiver). Both must pass: a sender calling Accept fails the role check (403) even though they pass the party check.
+- This applies uniformly to Show, Accept, Decline, and Cancel. List is scoped to the authenticated user at the query level and returns only the user's own requests (no ownership check needed per row).
+- No formal Laravel Policy is used — ownership is enforced in the controller, consistent with the Phase 5 pattern.
+
+### State Machine
+
+The status field is one of: `pending`, `accepted`, `declined`, `cancelled`, `completed`.
+
+```
+pending
+├── accepted    (receiver)
+├── declined    (receiver)
+└── cancelled   (sender)
+
+accepted
+├── cancelled   (sender)
+└── completed   (Phase 9 — not exposed in Phase 7)
+
+declined   → terminal
+cancelled  → terminal
+completed  → terminal
+```
+
+All transitions not listed above are forbidden and return 422. Terminal states (`declined`, `cancelled`, `completed`) accept no further transitions. Transition endpoints are NOT idempotent — replaying a transition on a request that is not in the required source state returns 422.
+
+### Create Exchange Request (POST /me/exchange-requests)
+
+**Request Body:**
+
+| Field              | Type    | Required | Description                                        |
+| ------------------ | ------- | -------- | -------------------------------------------------- |
+| receiver_id        | integer | yes      | ID of the user receiving the request               |
+| teaching_skill_id  | integer | yes      | ID of the sender's teaching user_skill             |
+| learning_skill_id  | integer | no       | ID of the receiver's learning user_skill (null = one-way) |
+| message            | string  | no       | Optional message (max 500 characters)              |
+
+**Validation Rules:**
+- `receiver_id`: required, integer, exists:users,id
+- `teaching_skill_id`: required, integer, exists:user_skills,id — must belong to sender, must be "teaching" type
+- `learning_skill_id`: nullable, integer, exists:user_skills,id — must belong to receiver, must be "learning" type
+- `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; if the trimmed value is empty it is stored as `null` (whitespace-only messages are never persisted as non-empty strings)
+- `receiver_id` must not equal the authenticated user (self-request): 422
+- No active request (status IN pending, accepted) may exist between the pair in either direction: 422
+- Sender and receiver must each satisfy eligibility rules (verified email, profile completion ≥ 5, at least one skill): 422
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Exchange request sent.",
+  "data": {
+    "exchange_request": {
+      "id": 1,
+      "sender": { "...UserResource..." },
+      "receiver": { "...UserResource..." },
+      "teaching_skill": { "...UserSkillResource..." },
+      "learning_skill": null,
+      "message": "Let us learn together!",
+      "status": "pending",
+      "created_at": "2026-07-29T12:00:00.000000Z",
+      "updated_at": "2026-07-29T12:00:00.000000Z"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 401: Unauthenticated
+- 422: Validation failed, or business rule violation (duplicate active request, wrong skill owner, self-request, ineligible sender or receiver)
+
+### List Exchange Requests (GET /me/exchange-requests)
+
+Returns all requests where the authenticated user is sender or receiver, ordered newest-first:
+
+```
+ORDER BY created_at DESC, id DESC
+```
+
+The `id DESC` tie-breaker guarantees deterministic ordering when `created_at` collides. The frontend relies on this contract and applies no client-side sorting.
+
+**Query Parameters:**
+
+| Parameter | Type    | Default | Description                                              |
+| --------- | ------- | ------- | -------------------------------------------------------- |
+| role      | enum    | none    | Filter by the user's role: `sender` or `receiver`. Omitting it returns both. |
+| status    | enum    | none    | Filter by status: `pending`, `accepted`, `declined`, `cancelled`, `completed`. Omitting it returns all. |
+| page      | integer | 1       | Page number.                                             |
+| per_page  | integer | 20      | Results per page. Maximum 50.                            |
+
+**Pagination:** identical to Discover — `page` default 1, `per_page` default 20, maximum 50. Values outside these bounds are clamped. Pagination metadata uses the standard `meta` wrapper (`current_page`, `last_page`, `per_page`, `total`). The ordering contract applies within every page.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Exchange requests retrieved.",
+  "data": {
+    "exchange_requests": [
+      {
+        "id": 1,
+        "sender": { "...UserResource..." },
+        "receiver": { "...UserResource..." },
+        "teaching_skill": { "...UserSkillResource..." },
+        "learning_skill": { "...UserSkillResource..." },
+        "message": null,
+        "status": "pending",
+        "created_at": "2026-07-29T12:00:00.000000Z",
+        "updated_at": "2026-07-29T12:00:00.000000Z"
+      }
+    ]
+  },
+  "meta": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 20,
+    "total": 1
+  }
+}
+```
+
+### Show Exchange Request (GET /me/exchange-requests/{id})
+
+Returns a single exchange request. Only the sender and receiver can view it.
+
+**Error Responses:**
+- 403: User is not part of this exchange request
+- 404: Exchange request not found
+
+### Accept Exchange Request (PUT /me/exchange-requests/{id}/accept)
+
+Receiver only. Valid only when current status is `pending`. Transition: `pending` → `accepted`.
+
+Executes as a conditional update against the expected source state (`status = 'pending'`). If a concurrent request changed the status first, the update affects zero rows and the operation fails with 422 (see Canonical HTTP Response Codes) and a message indicating the request is no longer in the expected state. No partial update occurs.
+
+**Error Responses:**
+- 403: Only the receiver can accept this request
+- 422: Only pending requests can be accepted (including replay of an already-accepted request, or a concurrency conflict)
+
+### Decline Exchange Request (PUT /me/exchange-requests/{id}/decline)
+
+Receiver only. Valid only when current status is `pending`. Transition: `pending` → `declined`.
+
+Executes as a conditional update against the expected source state (`status = 'pending'`), with the same concurrency behavior as Accept.
+
+**Error Responses:**
+- 403: Only the receiver can decline this request
+- 422: Only pending requests can be declined (including replay of an already-declined request, or a concurrency conflict)
+
+### Cancel Exchange Request (PUT /me/exchange-requests/{id}/cancel)
+
+Sender only. Valid only when current status is `pending` or `accepted`. Transitions: `pending` → `cancelled` or `accepted` → `cancelled`.
+
+Executes as a conditional update against the expected source state (`status IN ('pending', 'accepted')`), with the same concurrency behavior as Accept.
+
+**Error Responses:**
+- 403: Only the sender can cancel this request
+- 422: Only pending or accepted requests can be cancelled (including replay of an already-cancelled request, or a concurrency conflict)
+
+### Concurrency
+
+Create and transition operations execute atomically inside a database transaction. All transitions (accept, decline, cancel) are **optimistic concurrency**: they run as conditional updates against the expected source state (`WHERE status = <expected>`). Under concurrent requests, exactly one conflicting operation succeeds (zero-row conditional update); the loser observes the updated state and receives 422 with a message indicating the request is no longer in the expected state. No partial update occurs (see FEATURES.MD → Concurrency).
+
+### API Resource Stability
+
+`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning it. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed.
+
+### Notifications
+
+Phase 7 sends no notifications (email, push, or in-app). New requests are visible only via the Exchange Requests page.
 
 ---
 
