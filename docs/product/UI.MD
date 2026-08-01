@@ -650,6 +650,7 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 
 - **ExchangeRequestsPage** — main page with Received / Sent tabs, pending count badge, and "New Request" button. **Received is the default tab** on first visit; Sent is shown only when the user explicitly switches.
 - **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons (Accept / Decline for receiver, Cancel for sender)
+- **ExchangeRequestDetailsModal** — read-only detail view for a single request: sender and receiver, teaching/learning skills (or one-way label), message, status badge, created date, and context-sensitive action buttons matching ExchangeRequestCard
 - **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, one-way checkbox, message input)
 - **StatusBadge** — color-coded badge for pending/accepted/declined/cancelled (`completed` is added in Phase 9 and must not be rendered in Phase 7)
 
@@ -667,7 +668,8 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 
 - **Pending (received):** Shows Accept (primary) and Decline (outline) buttons
 - **Pending (sent):** Shows Cancel (outline) button
-- **Accepted/Declined/Cancelled/Completed:** No action buttons; shows request date
+- **Accepted:** Sender shows Cancel (outline) button (matches the `accepted → cancelled` transition); Receiver shows no action buttons. Shows request date
+- **Declined/Cancelled:** No action buttons; shows request date
 - **One-way:** Learning skill row replaced with "One-way exchange (no return skill requested)" italic label
 
 #### SendExchangeRequestModal

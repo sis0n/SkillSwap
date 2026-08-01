@@ -13,9 +13,13 @@ interface DialogProps {
 
 export function Dialog({ open, onClose, title, children, className }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
@@ -27,6 +31,7 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
     return () => {
       document.removeEventListener("keydown", handleKeyDown)
       document.body.style.overflow = ""
+      previouslyFocused?.focus()
     }
   }, [open, onClose])
 
@@ -42,9 +47,15 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
         }}
       />
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         className={cn(
           "relative z-10 mx-4 w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl",
           "max-h-[calc(100vh-4rem)] overflow-y-auto",
+          "focus:outline-none",
           className,
         )}
       >
@@ -53,6 +64,7 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             <X className="size-5" />

@@ -4,6 +4,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ActiveExchangeCard } from "@/features/exchange-request/components/ActiveExchangeCard"
 import { useAuthStore } from "@/stores/authStore"
 
 export default function Dashboard() {
@@ -23,17 +24,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Active Exchanges</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">0</p>
-            <p className="text-sm text-muted-foreground">
-              No active exchanges yet
-            </p>
-          </CardContent>
-        </Card>
+        <ActiveExchangeCard count={0} />
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Upcoming Sessions</CardTitle>

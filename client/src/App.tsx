@@ -21,6 +21,9 @@ const ProfilePage = lazy(() => import("@/features/profile/pages/ProfilePage"))
 const PublicProfilePage = lazy(() => import("@/features/profile/pages/PublicProfilePage"))
 const SkillsPage = lazy(() => import("@/features/skills/pages/SkillsPage"))
 const DiscoverPage = lazy(() => import("@/features/discover/pages/DiscoverPage"))
+const ExchangeRequestsPage = lazy(
+  () => import("@/features/exchange-request/pages/ExchangeRequestsPage"),
+)
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((state) => state.initialize)
@@ -90,6 +93,10 @@ function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="skills" element={<SkillsPage />} />
+                    <Route
+                      path="exchange-requests"
+                      element={<ExchangeRequestsPage />}
+                    />
                   </Route>
                 </Route>
               </Routes>

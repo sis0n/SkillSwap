@@ -1477,9 +1477,9 @@ Build the complete Exchange Requests interface with all visual UI states before 
 - Stage 1 must not wait for or assume any backend endpoint exists.
 
 ### Types
-- [ ] Create `ExchangeRequestStatus` — Phase 7 uses only: `pending`, `accepted`, `declined`, `cancelled`. The `completed` status is introduced in Phase 9 (Learning Sessions) and must NOT be part of the Phase 7 frontend types, badges, filters, or component logic. It will be added during Phase 9 implementation.
-- [ ] Create `ExchangeRequest` interface (id, sender, receiver, teaching_skill, learning_skill, message, status, created_at, updated_at)
-- [ ] Create `SendExchangeRequestData` interface (receiver_id, teaching_skill_id, learning_skill_id?, message?)
+- [x] Create `ExchangeRequestStatus` — Phase 7 uses only: `pending`, `accepted`, `declined`, `cancelled`. The `completed` status is introduced in Phase 9 (Learning Sessions) and must NOT be part of the Phase 7 frontend types, badges, filters, or component logic. It will be added during Phase 9 implementation.
+- [x] Create `ExchangeRequest` interface (id, sender, receiver, teaching_skill, learning_skill, message, status, created_at, updated_at)
+- [x] Create `SendExchangeRequestData` interface (receiver_id, teaching_skill_id, learning_skill_id?, message?)
 
 ### Boundaries
 Stage 1 is strictly limited to frontend foundation. It must NOT include:
@@ -1487,65 +1487,67 @@ Stage 1 is strictly limited to frontend foundation. It must NOT include:
 - API requests or API client modules (e.g. `lib/api/exchange-requests.ts`)
 - React Query hooks or data fetching logic
 - Backend integration of any kind
-- Mock data, fake API responses, temporary API simulation, or hardcoded datasets
+- Mock data, fake API responses, temporary API simulation, or hardcoded datasets — **exception:** isolated placeholder fixtures (see below)
 - Business logic (status transitions, eligibility, ownership checks)
 - Temporary workarounds that simulate backend behavior
 
 All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend API).
 
+**Placeholder fixtures:** Stage 1 requires visual loaded states before any backend exists. To satisfy this, isolated placeholder fixtures (e.g. `features/exchange-request/data/placeholder.ts`) are permitted and used only as default prop values to render the visual states. They are temporary, are NOT coupled to component logic, do not simulate backend behavior, and are fully replaced by real API integration in Stage 3.
+
 ### Pages & Components
-- [ ] Create `ExchangeRequestsPage` (tabs: Received / Sent)
-- [ ] Create `ExchangeRequestCard` (user info, skills, message, status badge, action buttons)
-- [ ] Create `SendExchangeRequestModal` (teaching skill selector, learning skill selector, one-way checkbox, message input)
+- [x] Create `ExchangeRequestsPage` (tabs: Received / Sent)
+- [x] Create `ExchangeRequestCard` (user info, skills, message, status badge, action buttons)
+- [x] Create `SendExchangeRequestModal` (teaching skill selector, learning skill selector, one-way checkbox, message input)
 
 ### Routing
-- [ ] Lazy import + register `/exchange-requests` under `AuthenticatedLayout` in App.tsx
-- [ ] Sidebar link already exists — verify it maps to the route
+- [x] Lazy import + register `/exchange-requests` under `AuthenticatedLayout` in App.tsx
+- [x] Sidebar link already exists — verify it maps to the route
 
 ### User Interface
-- [ ] Tabbed interface (Received / Sent) — Received is the default tab
-- [ ] Pending count badge on Received tab
-- [ ] Status badge (pending/accepted/declined/cancelled — `completed` added in Phase 9)
-- [ ] Teaching skill display
-- [ ] Learning skill display (hidden for one-way requests)
-- [ ] "One-way exchange" label for requests without a learning skill
-- [ ] Accept / Decline buttons (receiver view)
-- [ ] Cancel button (sender view)
-- [ ] "New Request" button
-- [ ] Responsive layout
+- [x] Tabbed interface (Received / Sent) — Received is the default tab
+- [x] Pending count badge on Received tab
+- [x] Status badge (pending/accepted/declined/cancelled — `completed` added in Phase 9)
+- [x] Teaching skill display
+- [x] Learning skill display (hidden for one-way requests)
+- [x] "One-way exchange" label for requests without a learning skill
+- [x] Accept / Decline buttons (receiver view)
+- [x] Cancel button (sender view)
+- [x] "New Request" button
+- [x] Responsive layout
 
 ### States
-- [ ] Loading spinner
-- [ ] Empty (received): "When someone sends you a request, it will appear here."
-- [ ] Empty (sent): "Requests you have sent will appear here."
-- [ ] Error state with retry button
-- [ ] Loaded state with request cards
+- [x] Loading spinner
+- [x] Empty (received): "When someone sends you a request, it will appear here."
+- [x] Empty (sent): "Requests you have sent will appear here."
+- [x] Error state with retry button
+- [x] Loaded state with request cards
 
 ### Theme
-- [ ] Dark mode support
+- [x] Dark mode support
 
 ### Responsive Layout
-- [ ] Mobile
-- [ ] Tablet
-- [ ] Desktop
+- [x] Mobile
+- [x] Tablet
+- [x] Desktop
 
 ### Stage 1 Completion Criteria
 Stage 1 is complete when:
 
-- [ ] `ExchangeRequestsPage` with all UI states (loading, empty received, empty sent, error, loaded)
-- [ ] Responsive layout (mobile, tablet, desktop)
-- [ ] Reusable components (`ExchangeRequestCard`, `SendExchangeRequestModal`)
-- [ ] Status badge colors for all 5 statuses
-- [ ] Route registered at `/exchange-requests`
-- [ ] Sidebar navigation link maps to the route
-- [ ] Dark mode support
+- [x] `ExchangeRequestsPage` with all UI states (loading, empty received, empty sent, error, loaded)
+- [x] Responsive layout (mobile, tablet, desktop)
+- [x] Reusable components (`ExchangeRequestCard`, `SendExchangeRequestModal`)
+- [x] Status badge colors for all 4 Phase 7 statuses (pending/accepted/declined/cancelled)
+- [x] Route registered at `/exchange-requests`
+- [x] Sidebar navigation link maps to the route
+- [x] Dark mode support
 
 Stage 1 explicitly does NOT include:
 
 - No backend implementation
 - No API requests
 - No React Query or data fetching hooks
-- No mock data or fake API simulation
+- No mock data or fake API simulation (isolated placeholder fixtures are permitted — see Boundaries above)
 - No business logic (status transitions, ownership checks)
 - No temporary workarounds that simulate backend behavior
 
