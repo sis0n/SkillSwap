@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthCheckController;
 use App\Http\Controllers\Api\V1\LanguageController;
 use App\Http\Controllers\Api\V1\Discover\DiscoverController;
+use App\Http\Controllers\Api\V1\ExchangeRequest\ExchangeRequestController;
 use App\Http\Controllers\Api\V1\Profile\PortfolioLinkController;
 use App\Http\Controllers\Api\V1\Profile\ProfileController;
 use App\Http\Controllers\Api\V1\Skills\SkillCategoryController;
@@ -110,6 +111,24 @@ Route::name('api.')
 
                 Route::delete('skills/{userSkill}', [UserSkillController::class, 'destroy'])
                     ->name('me.skills.destroy');
+
+                Route::get('exchange-requests', [ExchangeRequestController::class, 'index'])
+                    ->name('me.exchange-requests.index');
+
+                Route::post('exchange-requests', [ExchangeRequestController::class, 'store'])
+                    ->name('me.exchange-requests.store');
+
+                Route::get('exchange-requests/{exchangeRequest}', [ExchangeRequestController::class, 'show'])
+                    ->name('me.exchange-requests.show');
+
+                Route::put('exchange-requests/{exchangeRequest}/accept', [ExchangeRequestController::class, 'accept'])
+                    ->name('me.exchange-requests.accept');
+
+                Route::put('exchange-requests/{exchangeRequest}/decline', [ExchangeRequestController::class, 'decline'])
+                    ->name('me.exchange-requests.decline');
+
+                Route::put('exchange-requests/{exchangeRequest}/cancel', [ExchangeRequestController::class, 'cancel'])
+                    ->name('me.exchange-requests.cancel');
 
             });
         });

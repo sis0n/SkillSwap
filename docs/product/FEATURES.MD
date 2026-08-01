@@ -1101,15 +1101,15 @@ Receivers discover new requests only by visiting the Exchange Requests page (Rec
 
 ### Backend Tasks
 
-- [ ] Make `learning_skill_id` nullable (new migration)
-- [ ] Create `ExchangeRequestService` with CRUD and status transition methods
-- [ ] Create `ExchangeRequestController` (index, show, store, accept, decline, cancel)
-- [ ] Create `ExchangeRequestResource`
-- [ ] Create `StoreExchangeRequestRequest` with validation rules
-- [ ] Register routes under `me/exchange-requests`
-- [ ] Implement list filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50)
-- [ ] Implement optimistic concurrency (conditional updates) for accept, decline, cancel
-- [ ] Write tests (19+ test cases covering all status transitions, auth, validation, idempotency, eligibility, concurrency)
+- [x] Make `learning_skill_id` nullable (new migration)
+- [x] Create `ExchangeRequestService` with CRUD and status transition methods
+- [x] Create `ExchangeRequestController` (index, show, store, accept, decline, cancel)
+- [x] Create `ExchangeRequestResource`
+- [x] Create `StoreExchangeRequestRequest` with validation rules
+- [x] Register routes under `me/exchange-requests`
+- [x] Implement list filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50)
+- [x] Implement optimistic concurrency (conditional updates) for accept, decline, cancel
+- [x] Write tests (19+ test cases covering all status transitions, auth, validation, idempotency, eligibility, concurrency)
 
 ### Frontend Tasks
 

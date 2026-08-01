@@ -1585,106 +1585,106 @@ Stage 2 must not modify:
 - Existing models, controllers, or services from other phases
 
 ### Database
-- [ ] Create migration: make `exchange_requests.learning_skill_id` nullable
+- [x] Create migration: make `exchange_requests.learning_skill_id` nullable
 
 ### Model (`ExchangeRequest.php`) — Already exists
-- [ ] Verify relationships: sender, receiver, teachingSkill, learningSkill, conversation, learningSessions
-- [ ] Ensure `$fillable` includes: sender_id, receiver_id, teaching_skill_id, learning_skill_id, message, status
+- [x] Verify relationships: sender, receiver, teachingSkill, learningSkill, conversation, learningSessions
+- [x] Ensure `$fillable` includes: sender_id, receiver_id, teaching_skill_id, learning_skill_id, message, status
 
 ### Controller & Routes
-- [ ] Create `ExchangeRequestController`
-- [ ] Register `GET /api/v1/me/exchange-requests`
-- [ ] Register `POST /api/v1/me/exchange-requests`
-- [ ] Register `GET /api/v1/me/exchange-requests/{exchangeRequest}`
-- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/accept`
-- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/decline`
-- [ ] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/cancel`
+- [x] Create `ExchangeRequestController`
+- [x] Register `GET /api/v1/me/exchange-requests`
+- [x] Register `POST /api/v1/me/exchange-requests`
+- [x] Register `GET /api/v1/me/exchange-requests/{exchangeRequest}`
+- [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/accept`
+- [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/decline`
+- [x] Register `PUT /api/v1/me/exchange-requests/{exchangeRequest}/cancel`
 
 ### Form Request
-- [ ] Create `StoreExchangeRequestRequest`
+- [x] Create `StoreExchangeRequestRequest`
 
 Validation:
-- [ ] `receiver_id`: required, integer, exists:users,id
-- [ ] `teaching_skill_id`: required, integer, exists:user_skills,id
-- [ ] `learning_skill_id`: nullable, integer, exists:user_skills,id
-- [ ] `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; empty trimmed value stored as `null`
+- [x] `receiver_id`: required, integer, exists:users,id
+- [x] `teaching_skill_id`: required, integer, exists:user_skills,id
+- [x] `learning_skill_id`: nullable, integer, exists:user_skills,id
+- [x] `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; empty trimmed value stored as `null`
 
 ### Service
-- [ ] Create `ExchangeRequestService`
+- [x] Create `ExchangeRequestService`
       Responsibilities:
-- [ ] List requests where user is sender or receiver (ordered by `created_at DESC, id DESC`)
-- [ ] List filtering by `role` (sender/receiver) and `status`
-- [ ] List pagination — `page` default 1, `per_page` default 20, max 50 (matches Discover contract)
-- [ ] Create request — teaching_skill belongs to sender and is "teaching" type
-- [ ] Create request — learning_skill belongs to receiver and is "learning" type
-- [ ] Bidirectional duplicate guard — at most one active request per unordered pair (regardless of direction or skill combination)
-- [ ] Self-request guard (sender_id !== receiver_id)
-- [ ] Sender eligibility check (email verified, profile completion ≥ 5, has a teaching skill)
-- [ ] Receiver eligibility check (email verified, profile completion ≥ 5, at least one skill)
-- [ ] Accept — receiver only, status must be pending (optimistic conditional update)
-- [ ] Decline — receiver only, status must be pending (optimistic conditional update)
-- [ ] Cancel — sender only, status must be pending or accepted (optimistic conditional update)
+- [x] List requests where user is sender or receiver (ordered by `created_at DESC, id DESC`)
+- [x] List filtering by `role` (sender/receiver) and `status`
+- [x] List pagination — `page` default 1, `per_page` default 20, max 50 (matches Discover contract)
+- [x] Create request — teaching_skill belongs to sender and is "teaching" type
+- [x] Create request — learning_skill belongs to receiver and is "learning" type
+- [x] Bidirectional duplicate guard — at most one active request per unordered pair (regardless of direction or skill combination)
+- [x] Self-request guard (sender_id !== receiver_id)
+- [x] Sender eligibility check (email verified, profile completion ≥ 5, has a teaching skill)
+- [x] Receiver eligibility check (email verified, profile completion ≥ 5, at least one skill)
+- [x] Accept — receiver only, status must be pending (optimistic conditional update)
+- [x] Decline — receiver only, status must be pending (optimistic conditional update)
+- [x] Cancel — sender only, status must be pending or accepted (optimistic conditional update)
 
 ### Business Rules
 The canonical rules live in FEATURES.MD → Exchange Requests (Phase 7). This checklist tracks their implementation:
 
-- [ ] State machine — only the allowed transitions execute; all others return 422
-- [ ] Terminal states (`declined`, `cancelled`, `completed`) accept no further transitions
-- [ ] `accepted → completed` is NOT exposed in Phase 7 (deferred to Phase 9)
-- [ ] Idempotency — replaying a transition on the wrong source state returns 422
-- [ ] Duplicate guard applies to the unordered pair, in both directions
-- [ ] Ordering contract — list returns `created_at DESC, id DESC`
-- [ ] Concurrency — create/accept/decline/cancel run atomically in a DB transaction; accept/decline/cancel use conditional updates against the expected source state (optimistic concurrency, 422 on zero-row update)
-- [ ] Message normalization — trim on create; empty trimmed value stored as `null`
-- [ ] Notifications — none sent in Phase 7 (email, push, in-app all out of scope)
+- [x] State machine — only the allowed transitions execute; all others return 422
+- [x] Terminal states (`declined`, `cancelled`, `completed`) accept no further transitions
+- [x] `accepted → completed` is NOT exposed in Phase 7 (deferred to Phase 9)
+- [x] Idempotency — replaying a transition on the wrong source state returns 422
+- [x] Duplicate guard applies to the unordered pair, in both directions
+- [x] Ordering contract — list returns `created_at DESC, id DESC`
+- [x] Concurrency — create/accept/decline/cancel run atomically in a DB transaction; accept/decline/cancel use conditional updates against the expected source state (optimistic concurrency, 422 on zero-row update)
+- [x] Message normalization — trim on create; empty trimmed value stored as `null`
+- [x] Notifications — none sent in Phase 7 (email, push, in-app all out of scope)
 
 ### Resource
-- [ ] Create `ExchangeRequestResource`
+- [x] Create `ExchangeRequestResource`
       Include:
-- [ ] id
-- [ ] sender (UserResource)
-- [ ] receiver (UserResource)
-- [ ] teaching_skill (UserSkillResource)
-- [ ] learning_skill (UserSkillResource)
-- [ ] message
-- [ ] status
-- [ ] created_at
-- [ ] updated_at
+- [x] id
+- [x] sender (UserResource)
+- [x] receiver (UserResource)
+- [x] teaching_skill (UserSkillResource)
+- [x] learning_skill (UserSkillResource)
+- [x] message
+- [x] status
+- [x] created_at
+- [x] updated_at
 
 ### Authorization
-- [ ] Controller-level ownership checks (no formal Policy — consistent with Phase 5 pattern)
-- [ ] Sender/receiver scoping on show, accept, decline, cancel
+- [x] Controller-level ownership checks (no formal Policy — consistent with Phase 5 pattern)
+- [x] Sender/receiver scoping on show, accept, decline, cancel
 
 ### Query Design
-- [ ] Eager load sender.profile, receiver.profile, teachingSkill.skill, learningSkill.skill
-- [ ] Prevent N+1 queries
+- [x] Eager load sender.profile, receiver.profile, teachingSkill.skill, learningSkill.skill
+- [x] Prevent N+1 queries
 
 ### Status Transitions
-- [ ] `pending` → `accepted` (receiver accepts)
-- [ ] `pending` → `declined` (receiver declines)
-- [ ] `pending` → `cancelled` (sender cancels)
-- [ ] `accepted` → `cancelled` (sender cancels)
-- [ ] `accepted` → `completed` deferred to Phase 9 (Learning Sessions)
+- [x] `pending` → `accepted` (receiver accepts)
+- [x] `pending` → `declined` (receiver declines)
+- [x] `pending` → `cancelled` (sender cancels)
+- [x] `accepted` → `cancelled` (sender cancels)
+- [x] `accepted` → `completed` deferred to Phase 9 (Learning Sessions)
 
 ### Stage 2 Completion Criteria
 Stage 2 is complete when:
 
-- [ ] Migration makes `learning_skill_id` nullable
-- [ ] `ExchangeRequestController` created with all 6 endpoints
-- [ ] `StoreExchangeRequestRequest` validates all fields
-- [ ] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, and status transition rules
-- [ ] `ExchangeRequestResource` returns sender, receiver, skills, message, status, timestamps
-- [ ] Status transitions enforced (invalid transitions return 422)
-- [ ] Idempotency enforced (replay on wrong source state returns 422)
-- [ ] Ownership enforced (unauthorized actor returns 403)
-- [ ] Eligibility enforced for sender and receiver (422 on violation)
-- [ ] List ordering follows `created_at DESC, id DESC`
-- [ ] List filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50) implemented
-- [ ] Optimistic concurrency — transitions run as conditional updates; zero-row updates return 422
-- [ ] Concurrency — create and transition operations run in DB transactions
-- [ ] API.md updated with endpoint documentation
-- [ ] All backend tests pass
-- [ ] API contract is finalized and stable
+- [x] Migration makes `learning_skill_id` nullable
+- [x] `ExchangeRequestController` created with all 6 endpoints
+- [x] `StoreExchangeRequestRequest` validates all fields
+- [x] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, and status transition rules
+- [x] `ExchangeRequestResource` returns sender, receiver, skills, message, status, timestamps
+- [x] Status transitions enforced (invalid transitions return 422)
+- [x] Idempotency enforced (replay on wrong source state returns 422)
+- [x] Ownership enforced (unauthorized actor returns 403)
+- [x] Eligibility enforced for sender and receiver (422 on violation)
+- [x] List ordering follows `created_at DESC, id DESC`
+- [x] List filtering (`role`, `status`) and pagination (`page`, `per_page` — default 20, max 50) implemented
+- [x] Optimistic concurrency — transitions run as conditional updates; zero-row updates return 422
+- [x] Concurrency — create and transition operations run in DB transactions
+- [x] API.md updated with endpoint documentation
+- [x] All backend tests pass
+- [x] API contract is finalized and stable
 
 Next stage (Stage 3) must not begin until all items above are satisfied.
 
