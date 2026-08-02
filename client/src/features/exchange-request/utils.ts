@@ -78,6 +78,16 @@ export function formatRequestDate(iso: string): string {
   })
 }
 
+export function formatRequestDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
 export function toExchangeRequestUser(source: {
   id: number
   first_name: string

@@ -19,6 +19,7 @@ class ExchangeRequestService
         'receiver.profile',
         'teachingSkill.skill.categories',
         'learningSkill.skill.categories',
+        'history.editedBy.profile',
     ];
 
     private const int DEFAULT_PER_PAGE = 20;
@@ -77,7 +78,7 @@ class ExchangeRequestService
 
             $this->assertAtLeastOneSkillProvided($data['teaching_skill_id'] ?? null, $data['learning_skill_id'] ?? null);
 
-            $this->assertNoActiveRequestBetween($sender->id, $receiver->id);
+            $this->assertNoActiveSkillRequest($sender->id, $receiver->id, $data['learning_skill_id'] ?? null);
 
             $exchangeRequest = ExchangeRequest::create([
                 'sender_id' => $sender->id,
@@ -145,10 +146,27 @@ class ExchangeRequestService
                 $updates['status'] = 'pending';
             }
 
+            $this->recordHistoryIfAccepted($exchangeRequest, $editor);
+
             $exchangeRequest->update($updates);
 
             return $exchangeRequest->fresh(self::LOAD_WITH);
         });
+    }
+
+    private function recordHistoryIfAccepted(ExchangeRequest $exchangeRequest, User $editor): void
+    {
+        if ($exchangeRequest->status !== 'accepted') {
+            return;
+        }
+
+        $exchangeRequest->history()->create([
+            'edited_by' => $editor->id,
+            'teaching_skill_id' => $exchangeRequest->teaching_skill_id,
+            'learning_skill_id' => $exchangeRequest->learning_skill_id,
+            'message' => $exchangeRequest->message,
+            'status' => $exchangeRequest->status,
+        ]);
     }
 
     public function decline(ExchangeRequest $exchangeRequest): ExchangeRequest
@@ -272,23 +290,32 @@ class ExchangeRequestService
         }
     }
 
-    private function assertNoActiveRequestBetween(int $senderId, int $receiverId): void
+    private function assertNoActiveSkillRequest(int $senderId, int $receiverId, ?int $learningSkillId): void
     {
+        if ($learningSkillId === null) {
+            return;
+        }
+
+        $skillId = UserSkill::query()
+            ->where('id', $learningSkillId)
+            ->value('skill_id');
+
+        if ($skillId === null) {
+            return;
+        }
+
         $exists = ExchangeRequest::query()
             ->whereIn('status', self::ACTIVE_STATUSES)
-            ->where(function (Builder $query) use ($senderId, $receiverId): void {
-                $query->where(function (Builder $query) use ($senderId, $receiverId): void {
-                    $query->where('sender_id', $senderId)
-                        ->where('receiver_id', $receiverId);
-                })->orWhere(function (Builder $query) use ($senderId, $receiverId): void {
-                    $query->where('sender_id', $receiverId)
-                        ->where('receiver_id', $senderId);
-                });
+            ->where('sender_id', $senderId)
+            ->where('receiver_id', $receiverId)
+            ->whereNotNull('learning_skill_id')
+            ->whereHas('learningSkill', function (Builder $query) use ($skillId): void {
+                $query->where('skill_id', $skillId);
             })
             ->exists();
 
         if ($exists) {
-            throw new ExchangeRequestException('An active exchange request already exists between you and this user.');
+            throw new ExchangeRequestException('You already have an active exchange with this user for this skill.');
         }
     }
 

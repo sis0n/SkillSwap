@@ -39,6 +39,11 @@ class ExchangeRequest extends Model
         return $this->belongsTo(UserSkill::class, 'teaching_skill_id');
     }
 
+    public function history(): HasMany
+    {
+        return $this->hasMany(ExchangeRequestHistory::class)->latest('id');
+    }
+
     public function learningSkill(): BelongsTo
     {
         return $this->belongsTo(UserSkill::class, 'learning_skill_id');

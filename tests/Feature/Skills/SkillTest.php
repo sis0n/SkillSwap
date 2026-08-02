@@ -133,6 +133,32 @@ class SkillTest extends TestCase
         ]);
     }
 
+    public function test_create_user_skill_defaults_featured_to_false_when_null(): void
+    {
+        $user = User::factory()->create();
+        $category = SkillCategory::factory()->create();
+        $skill = Skill::factory()->create();
+        $skill->categories()->attach($category->id);
+
+        $response = $this->actingAs($user)
+            ->postJson('/api/v1/me/skills', [
+                'skill_id' => $skill->id,
+                'type' => 'teaching',
+                'experience_level' => 'intermediate',
+                'years_of_experience' => 1,
+                'featured' => null,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user_skill.featured', false);
+
+        $this->assertDatabaseHas('user_skills', [
+            'user_id' => $user->id,
+            'skill_id' => $skill->id,
+            'featured' => false,
+        ]);
+    }
+
     public function test_authenticated_user_can_create_custom_skill(): void
     {
         $user = User::factory()->create();

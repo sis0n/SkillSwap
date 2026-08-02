@@ -34,6 +34,16 @@ export interface ExchangeRequestSkill {
   experience_level: "beginner" | "intermediate" | "advanced" | "expert"
 }
 
+export interface ExchangeRequestHistory {
+  id: number
+  edited_by: ExchangeRequestUser | null
+  teaching_skill: ExchangeRequestSkill | null
+  learning_skill: ExchangeRequestSkill | null
+  message: string | null
+  status: ExchangeRequestStatus | null
+  created_at: string
+}
+
 export interface ExchangeRequest {
   id: number
   sender: ExchangeRequestUser
@@ -43,6 +53,7 @@ export interface ExchangeRequest {
   message: string | null
   status: ExchangeRequestStatus
   reconfirmation_required_by: "sender" | "receiver" | null
+  history: ExchangeRequestHistory[]
   created_at: string
   updated_at: string
 }

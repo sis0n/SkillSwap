@@ -28,7 +28,7 @@ export function useSkills(params?: { search?: string; category_id?: number }) {
   })
 }
 
-export function useMySkills(params?: { category_id?: number }) {
+export function useMySkills(params?: { category_id?: number }, enabled = true) {
   return useQuery({
     queryKey: ["my-skills", params],
     queryFn: async () => {
@@ -36,6 +36,7 @@ export function useMySkills(params?: { category_id?: number }) {
       if (!response.success) throw new Error(response.message)
       return response.data.user_skills
     },
+    enabled,
     staleTime: 5 * 60 * 1000,
   })
 }

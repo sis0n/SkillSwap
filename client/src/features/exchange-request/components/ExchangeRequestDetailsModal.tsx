@@ -188,8 +188,8 @@ function RequestBody({
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <PartyRow label="Sender" user={request.sender} />
-        <PartyRow label="Receiver" user={request.receiver} />
+        <PartyRow label="Learning" user={request.sender} />
+        <PartyRow label="Teaching" user={request.receiver} />
       </div>
 
       <div className="space-y-2">

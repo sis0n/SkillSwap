@@ -1,4 +1,4 @@
-import { Check, Pencil, X } from "lucide-react"
+import { Check, History, Pencil, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ interface ExchangeRequestCardProps {
   currentUserId?: number
   isMutating?: boolean
   onViewDetails?: (request: ExchangeRequest) => void
+  onViewHistory?: (request: ExchangeRequest) => void
   onEdit?: (request: ExchangeRequest) => void
   onAccept?: (request: ExchangeRequest) => void
   onDecline?: (request: ExchangeRequest) => void
@@ -33,6 +34,7 @@ export function ExchangeRequestCard({
   currentUserId,
   isMutating = false,
   onViewDetails,
+  onViewHistory,
   onEdit,
   onAccept,
   onDecline,
@@ -58,62 +60,60 @@ export function ExchangeRequestCard({
       (request.status === "pending" || request.status === "accepted")) ||
     (role === "receiver" && request.status === "accepted")
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    const target = e.target as HTMLElement
-    if (target.closest("button, a, input, select, textarea")) return
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onViewDetails?.(request)
-    }
-  }
-
   return (
     <Card
       className={cn(
         "cursor-pointer transition-all duration-200",
-        "hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "hover:shadow-md",
       )}
       onClick={() => onViewDetails?.(request)}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label={`View exchange request from ${getDisplayName(otherParty)}`}
     >
       <CardContent className="space-y-4 p-5">
-        <div className="flex items-start gap-3">
-          <div className="shrink-0" aria-hidden="true">
-            {otherParty.profile?.avatar_url ? (
-              <img
-                src={otherParty.profile.avatar_url}
-                alt=""
-                className="size-11 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                {getInitials(otherParty.first_name, otherParty.last_name)}
-              </div>
-            )}
-          </div>
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            className="flex min-w-0 items-start gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewDetails?.(request)
+            }}
+            aria-label={`View exchange request from ${getDisplayName(otherParty)}`}
+          >
+            <span className="shrink-0" aria-hidden="true">
+              {otherParty.profile?.avatar_url ? (
+                <img
+                  src={otherParty.profile.avatar_url}
+                  alt=""
+                  className="size-11 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                  {getInitials(otherParty.first_name, otherParty.last_name)}
+                </span>
+              )}
+            </span>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-semibold">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">
                 {getDisplayName(otherParty)}
-              </h3>
-              <ExchangeRequestStatusBadge status={request.status} />
-              {request.status === "pending" &&
-                request.reconfirmation_required_by && (
-                  <span className="text-xs italic text-muted-foreground">
-                    Awaiting {request.reconfirmation_required_by} confirmation
-                  </span>
-                )}
-            </div>
-            <p className="truncate text-xs text-muted-foreground">
-              @{otherParty.username}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                @{otherParty.username}
+              </span>
+            </span>
+          </button>
+
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <ExchangeRequestStatusBadge status={request.status} />
+            {request.status === "pending" &&
+              request.reconfirmation_required_by && (
+                <span className="text-xs italic text-muted-foreground">
+                  Awaiting {request.reconfirmation_required_by} confirmation
+                </span>
+              )}
+            <span className="text-xs text-muted-foreground">
               {formatRequestDate(request.created_at)}
-            </p>
+            </span>
           </div>
         </div>
 
@@ -161,8 +161,22 @@ export function ExchangeRequestCard({
           </p>
         )}
 
-        {(canAccept || canDecline || canCancel || canEdit) && (
+        {(canAccept || canDecline || canCancel || canEdit ||
+          (request.history?.length ?? 0) > 0) && (
           <div className="flex flex-wrap gap-2 border-t pt-3">
+            {(request.history?.length ?? 0) > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onViewHistory?.(request)
+                }}
+              >
+                <History className="size-4" />
+                Details
+              </Button>
+            )}
             {canEdit && (
               <Button
                 size="sm"

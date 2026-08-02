@@ -916,7 +916,7 @@ Two terms are used throughout Phase 7 documentation. They are defined once here 
 **Active Request**
 
 - Statuses: `pending`, `accepted`
-- Purpose: duplicate-request guard. At most one active request may exist per unordered pair of users (in either direction), regardless of skill combination.
+- Purpose: duplicate-request guard. At most one active request may exist per sender, receiver, and catalog skill — same-direction, same-skill only. Reverse direction or different-skill requests are NOT blocked.
 - Counter-example: a request that is `declined`, `cancelled`, or `completed` is NOT active and does not block a new request between the pair.
 
 **Active Exchange**
@@ -1011,16 +1011,32 @@ Exactly who may perform each action. This section is the single authority — al
 
 ### Duplicate Request Rules
 
-At most ONE active exchange request may exist between a given pair of users, regardless of direction or skill combination.
+At most ONE active exchange request may exist for a given **direction + catalog skill** combination. The guard is scoped to the ordered direction — a request is blocked only when the *learning* skill's underlying catalog `skill_id` already has an active request from the same sender to the same receiver.
 
-- A → B is blocked while any active request exists between A and B in EITHER direction.
-- B → A is likewise blocked under the same condition.
-- The guard applies to the unordered pair `{sender, receiver}`, not the ordered tuple.
-- Different skill combinations do NOT create separate requests — the pair-level guard applies regardless of which skills are involved.
+- A → B is blocked only while an active request exists from A to B targeting the SAME catalog skill (as the `learning` skill).
+- A→B is NOT blocked by a reverse request B→A, even for the same skill.
+- A→B is NOT blocked by a prior active A→B request for a DIFFERENT skill — each skill pair is independent.
+- A skill-less request (`learning_skill_id` = null) is never blocked: the duplicate guard is skipped.
 - After a request becomes `declined`, `cancelled`, or `completed`, either party may send a new request.
-- Violation: 422, message "An active exchange request already exists between you and this user."
+- Violation: 422, message "You already have an active exchange with this user for this skill."
 
 **Active request** (duplicate guard) = status IN (`pending`, `accepted`) — see Terminology.
+
+### Modification History (Edit Audit Trail)
+
+Edits to an **accepted** request are recorded so both parties can see how the exchange evolved after acceptance. History is captured only in the `accepted → pending` reopen path — editing a `pending` request does not produce a history entry.
+
+- A history row is written inside the update transaction, **before** the change is applied, capturing the **before** state: `teaching_skill_id`, `learning_skill_id`, `message`, the pre-edit `status` (i.e. `accepted`), and the `edited_by` user.
+- Each row is a per-edit **snapshot** of the previous values; the current request row holds the newest state.
+- Table: `exchange_request_history` (FKs to `exchange_requests`, `users`, `user_skills`; cascade on request delete).
+- The response exposes a `history` array (newest first), each entry: `edited_by`, `teaching_skill`, `learning_skill`, `message`, `status`, `created_at`. When no history is loaded it serializes to `[]`.
+- Only **persisted edits** appear — no fabricated "created/accepted" timeline events are added.
+
+**UI contract:**
+
+- The request card shows a **Details** button **only** when the request has history (`history.length > 0`).
+- Clicking Details opens a dedicated **Request History** modal showing the timeline **oldest → newest**, with a context note: *"Only edits made after the request was accepted are recorded."*
+- The details modal (ExchangeRequestDetailsModal) is scoped to the **current** request state only — no accordion/inline history inside it.
 
 ### Eligibility Rules
 

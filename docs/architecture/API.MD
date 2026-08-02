@@ -1869,7 +1869,7 @@ All transitions not listed above are forbidden and return 422. Terminal states (
 - At least one of `teaching_skill_id` / `learning_skill_id` must be provided: 422
 - `message`: nullable, string, max:500 — trimmed of leading/trailing whitespace; if the trimmed value is empty it is stored as `null` (whitespace-only messages are never persisted as non-empty strings)
 - `receiver_id` must not equal the authenticated user (self-request): 422
-- No active request (status IN pending, accepted) may exist between the pair in either direction: 422
+- No active request (status IN pending, accepted) for the same catalog `learning` skill from this sender to this receiver (same-direction, same-skill only; reverse-direction and different-skill requests are not blocked): 422
 - Sender and receiver must each satisfy eligibility rules (verified email, profile completion ≥ 5, at least one skill): 422
 
 **Success Response (201):**
@@ -1887,6 +1887,7 @@ All transitions not listed above are forbidden and return 422. Terminal states (
       "message": "Let us learn together!",
       "status": "pending",
       "reconfirmation_required_by": null,
+      "history": [],
       "created_at": "2026-07-29T12:00:00.000000Z",
       "updated_at": "2026-07-29T12:00:00.000000Z"
     }
@@ -1973,6 +1974,7 @@ Edit the skills and message of an exchange request. Available only to a party of
 - A `pending` request can only be edited by the **sender**.
 - An `accepted` request can be edited by **either party** (sender or receiver).
 - Editing an `accepted` request resets its status to `pending` and sets `reconfirmation_required_by` to the **non-editor** party, who must re-confirm via accept/decline. Editing any request (pending or accepted) records the non-editor as the party whose confirmation is pending.
+- **History capture:** editing an `accepted` request (the reopen path) writes one `exchange_request_history` row recording the **before** values (teaching_skill_id, learning_skill_id, message, status) and `edited_by`. Editing a `pending` request does NOT create a history row. The response `history` array reflects the recorded trail.
 - `declined` and `cancelled` requests are terminal and cannot be edited.
 - `receiver_id` is immutable and never part of the update payload.
 
@@ -2032,7 +2034,7 @@ Create and transition operations execute atomically inside a database transactio
 
 ### API Resource Stability
 
-`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning it. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `reconfirmation_required_by`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed. `teaching_skill` and `learning_skill` are nullable (`null` when the sender offers no teaching skill or no return skill is requested, respectively). `reconfirmation_required_by` is nullable (`'sender'`/`'receiver'` while a re-confirmation is pending after an edit, `null` otherwise).
+`ExchangeRequestResource` defines the canonical response shape for exchange requests. Future phases (Messaging — Phase 8, Learning Sessions — Phase 9, Reviews — Phase 10) MUST extend this resource rather than redesigning it. The `id`, `sender`, `receiver`, `teaching_skill`, `learning_skill`, `message`, `status`, `reconfirmation_required_by`, `created_at`, and `updated_at` fields are stable and must not be renamed, removed, or re-typed. `teaching_skill` and `learning_skill` are nullable (`null` when the sender offers no teaching skill or no return skill is requested, respectively). `reconfirmation_required_by` is nullable (`'sender'`/`'receiver'` while a re-confirmation is pending after an edit, `null` otherwise). The `history` field is an array of `ExchangeRequestHistoryResource` entries (edit audit trail) — it is always present and serializes to `[]` when empty / when the relation is not eager-loaded.
 
 ### Notifications
 

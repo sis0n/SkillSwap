@@ -381,7 +381,22 @@ Relationships:
 - `accepted` → `cancelled` | `completed` (Phase 9)
 - `declined` / `cancelled` / `completed` are terminal
 
-**Note (Phase 7):** new migrations make `teaching_skill_id` and `learning_skill_id` nullable (either side may offer no skill; at least one is required by the service layer) and add `reconfirmation_required_by`. The MVP enforces "at most one active request per unordered user pair" in the service layer; a database-level unique partial index on `(LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id))` where `status IN (pending, accepted)` is a candidate hardening, but it is NOT required for the MVP.
+**Note (Phase 7):** new migrations make `teaching_skill_id` and `learning_skill_id` nullable (either side may offer no skill; at least one is required by the service layer) and add `reconfirmation_required_by`. The MVP enforces the duplicate guard **in the service layer**: at most one active (pending/accepted) request per **sender + receiver + catalog `learning` skill** (same-direction, same-skill only; reverse-direction and different-skill requests are allowed).
+
+### exchange_request_history
+
+Holds the edit audit trail — snapshots of the **before** values recorded only when an `accepted` request is edited (`accepted → pending` reopen). A per-edit row stores the old state; the current `exchange_requests` row holds the new state.
+
+| Column                | Type                |
+| --------------------- | ------------------- |
+| id                    | bigint              |
+| exchange_request_id   | bigint FK(exchange_requests) — cascade on delete, indexed |
+| edited_by             | bigint FK(users) — nullable, null on delete |
+| teaching_skill_id     | bigint FK(user_skills) — nullable (before value) |
+| learning_skill_id     | bigint FK(user_skills) — nullable (before value) |
+| message               | text                |
+| status                | nullable string — status before the edit (`accepted`) |
+| created_at / updated_at | timestamps        |
 
 ### conversations
 

@@ -11,6 +11,7 @@ import { ExchangeRequestCard } from "../components/ExchangeRequestCard"
 import { ExchangeRequestDetailsModal } from "../components/ExchangeRequestDetailsModal"
 import { ExchangeRequestEmptyState } from "../components/ExchangeRequestEmptyState"
 import { ExchangeRequestFilters } from "../components/ExchangeRequestFilters"
+import { ExchangeRequestHistoryModal } from "../components/ExchangeRequestHistoryModal"
 import { ExchangeRequestLoadingState } from "../components/ExchangeRequestLoadingState"
 import { ExchangeRequestTabs } from "../components/ExchangeRequestTabs"
 import { SendExchangeRequestModal } from "../components/SendExchangeRequestModal"
@@ -41,6 +42,7 @@ export default function ExchangeRequestsPage() {
   const navigate = useNavigate()
   const [urlSearchParams, setUrlSearchParams] = useSearchParams()
   const [detailsRequestId, setDetailsRequestId] = useState<number | null>(null)
+  const [historyRequest, setHistoryRequest] = useState<ExchangeRequest | null>(null)
   const [editRequest, setEditRequest] = useState<ExchangeRequest | null>(null)
   const [pendingActionId, setPendingActionId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -205,6 +207,7 @@ export default function ExchangeRequestsPage() {
                     request={request}
                     currentUserId={currentUserId}
                     onViewDetails={(r) => setDetailsRequestId(r.id)}
+                    onViewHistory={(r) => setHistoryRequest(r)}
                     onEdit={(r) => setEditRequest(r)}
                     isMutating={pendingActionId === request.id}
                     onAccept={() =>
@@ -238,6 +241,11 @@ export default function ExchangeRequestsPage() {
         requestId={detailsRequestId}
         currentUserId={currentUserId}
         onClose={() => setDetailsRequestId(null)}
+      />
+
+      <ExchangeRequestHistoryModal
+        request={historyRequest}
+        onClose={() => setHistoryRequest(null)}
       />
 
       <SendExchangeRequestModal

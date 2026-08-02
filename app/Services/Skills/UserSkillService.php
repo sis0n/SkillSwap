@@ -64,6 +64,10 @@ class UserSkillService
                 unset($data['skill_name'], $data['category_ids']);
             }
 
+            $data['featured'] = array_key_exists('featured', $data)
+                ? (bool) $data['featured']
+                : false;
+
             return $user->userSkills()->create($data)->load(['skill.categories']);
         });
     }
@@ -71,6 +75,10 @@ class UserSkillService
     public function updateUserSkill(UserSkill $userSkill, array $data): UserSkill
     {
         return DB::transaction(function () use ($userSkill, $data) {
+            if (array_key_exists('featured', $data)) {
+                $data['featured'] = (bool) $data['featured'];
+            }
+
             $userSkill->update($data);
 
             return $userSkill->fresh()->load(['skill.categories']);

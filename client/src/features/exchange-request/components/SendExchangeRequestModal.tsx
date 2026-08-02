@@ -43,16 +43,19 @@ export function SendExchangeRequestModal({
 }: SendExchangeRequestModalProps) {
   const [teachingSkillId, setTeachingSkillId] = useState("")
   const [learningSkillId, setLearningSkillId] = useState("")
-  const [isOneWay, setIsOneWay] = useState(false)
+  const [offeringSkill, setOfferingSkill] = useState(false)
   const [message, setMessage] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
 
-  const { data: mySkills = [], isLoading: mySkillsLoading } = useMySkills()
+  const { data: mySkills = [], isLoading: mySkillsLoading } = useMySkills(
+    undefined,
+    open,
+  )
   const { data: receiverProfile, isLoading: receiverSkillsLoading } =
-    usePublicProfile(receiver?.username ?? "")
+    usePublicProfile(open ? (receiver?.username ?? "") : "")
   const { data: senderProfile, isLoading: senderSkillsLoading } =
-    usePublicProfile(request?.sender.username ?? "")
+    usePublicProfile(open ? (request?.sender.username ?? "") : "")
 
   const createMutation = useCreateExchangeRequest()
   const updateMutation = useUpdateExchangeRequest()
@@ -61,6 +64,10 @@ export function SendExchangeRequestModal({
   const editorIsSender = isEditing
     ? currentUserId != null && request?.sender.id === currentUserId
     : true
+
+  const requestAccepted = isEditing && request?.status === "accepted"
+  const teachingLocked = Boolean(requestAccepted && editorIsSender)
+  const learningLocked = Boolean(requestAccepted && !editorIsSender)
 
   const teachingSkills: ExchangeRequestSkill[] = mySkills.filter(
     (skill) => skill.type === "teaching",
@@ -73,18 +80,20 @@ export function SendExchangeRequestModal({
   useEffect(() => {
     if (open) {
       if (isEditing && request) {
-        setTeachingSkillId(request.teaching_skill ? String(request.teaching_skill.id) : "")
+        setTeachingSkillId(
+          request.teaching_skill ? String(request.teaching_skill.id) : "",
+        )
         setLearningSkillId(
           request.learning_skill ? String(request.learning_skill.id) : "",
         )
-        setIsOneWay(request.learning_skill === null)
+        setOfferingSkill(request.teaching_skill !== null)
         setMessage(request.message ?? "")
       } else {
         setTeachingSkillId("")
         setLearningSkillId(
           preselectedLearningSkillId ? String(preselectedLearningSkillId) : "",
         )
-        setIsOneWay(false)
+        setOfferingSkill(false)
         setMessage("")
       }
       setFieldErrors({})
@@ -112,15 +121,7 @@ export function SendExchangeRequestModal({
     const result = sendExchangeRequestSchema.safeParse({
       receiver_id: receiver?.id,
       teaching_skill_id: teachingSkillId ? Number(teachingSkillId) : undefined,
-      learning_skill_id: isReceiverEditor
-        ? learningSkillId
-          ? Number(learningSkillId)
-          : undefined
-        : isOneWay
-          ? null
-          : learningSkillId
-            ? Number(learningSkillId)
-            : undefined,
+      learning_skill_id: learningSkillId ? Number(learningSkillId) : undefined,
       message,
     })
 
@@ -142,20 +143,32 @@ export function SendExchangeRequestModal({
         })
         return
       }
-    } else if (!isOneWay && !learningSkillId) {
+    } else if (!learningSkillId) {
       setFieldErrors({
         learning_skill_id: "Please select a skill you would like to learn.",
       })
       return
     }
 
+    const teaching_skill_id = teachingLocked
+      ? (request?.teaching_skill?.id ?? null)
+      : editorIsSender
+        ? offeringSkill
+          ? (teachingSkillId ? Number(teachingSkillId) : null)
+          : null
+        : result.data.teaching_skill_id ?? null
+
+    const learning_skill_id = learningLocked
+      ? (request?.learning_skill?.id ?? null)
+      : (result.data.learning_skill_id ?? null)
+
     if (isEditing && request) {
       updateMutation.mutate(
         {
           id: request.id,
           data: {
-            teaching_skill_id: result.data.teaching_skill_id ?? null,
-            learning_skill_id: result.data.learning_skill_id ?? null,
+            teaching_skill_id,
+            learning_skill_id,
             message: result.data.message ?? null,
           },
         },
@@ -178,7 +191,7 @@ export function SendExchangeRequestModal({
     createMutation.mutate(
       {
         receiver_id: receiver?.id as number,
-        teaching_skill_id: result.data.teaching_skill_id ?? null,
+        teaching_skill_id,
         learning_skill_id: result.data.learning_skill_id ?? null,
         message: result.data.message ?? null,
       },
@@ -199,75 +212,77 @@ export function SendExchangeRequestModal({
 
   const isMutating = createMutation.isPending || updateMutation.isPending
 
-  const teachingField = editorIsSender ? (
-    <div className="space-y-2">
-      <Label htmlFor="send-teaching-skill">
-        Skill you can teach (optional)
-      </Label>
-      {mySkillsLoading ? (
-        <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
-          <LoadingSpinner size="sm" />
-          Loading your skills...
-        </div>
-      ) : teachingSkills.length === 0 ? (
-        <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-          No teaching skills yet — you can send the request without one, or add
-          one later.
-        </p>
-      ) : (
-        <CustomSelect
-          id="send-teaching-skill"
-          value={teachingSkillId || undefined}
-          onChange={(value) => setTeachingSkillId(value ?? "")}
-          placeholder="Select a teaching skill"
-          options={teachingOptions}
-        />
-      )}
-      {fieldErrors.teaching_skill_id && (
-        <p className="text-sm text-destructive">
-          {fieldErrors.teaching_skill_id}
-        </p>
-      )}
-    </div>
-  ) : (
-    <div className="space-y-2">
-      <Label htmlFor="edit-received-teaching">
-        Skill {getDisplayName(request!.sender)} will teach you (optional)
-      </Label>
-      {senderSkillsLoading ? (
-        <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
-          <LoadingSpinner size="sm" />
-          Loading their skills...
-        </div>
-      ) : senderTeachingSkills.length === 0 ? (
-        <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-          They have no teaching skills listed.
-        </p>
-      ) : (
-        <CustomSelect
-          id="edit-received-teaching"
-          value={teachingSkillId || undefined}
-          onChange={(value) => setTeachingSkillId(value ?? "")}
-          placeholder="Select a skill to learn"
-          options={senderTeachingSkills.map((skill) => ({
-            value: String(skill.id),
-            label: `${getSkillDisplayName(skill)} \u00b7 ${skill.experience_level}`,
-          }))}
-        />
-      )}
-      {fieldErrors.teaching_skill_id && (
-        <p className="text-sm text-destructive">
-          {fieldErrors.teaching_skill_id}
-        </p>
-      )}
-    </div>
-  )
+  const teachingField =
+    editorIsSender && !offeringSkill ? null : editorIsSender ? (
+      <div className="space-y-2">
+        <Label htmlFor="send-teaching-skill">
+          Skill you can teach (optional)
+        </Label>
+        {mySkillsLoading ? (
+          <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
+            <LoadingSpinner size="sm" />
+            Loading your skills...
+          </div>
+        ) : teachingSkills.length === 0 ? (
+          <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+            No teaching skills yet — you can still send the request without
+            one, or add one later.
+          </p>
+        ) : (
+          <CustomSelect
+            id="send-teaching-skill"
+            value={teachingSkillId || undefined}
+            onChange={(value) => setTeachingSkillId(value ?? "")}
+            placeholder="Select a teaching skill"
+            options={teachingOptions}
+            disabled={teachingLocked}
+          />
+        )}
+        {fieldErrors.teaching_skill_id && (
+          <p className="text-sm text-destructive">
+            {fieldErrors.teaching_skill_id}
+          </p>
+        )}
+      </div>
+    ) : (
+      <div className="space-y-2">
+        <Label htmlFor="edit-received-teaching">
+          Skill {getDisplayName(request!.sender)} will teach you (optional)
+        </Label>
+        {senderSkillsLoading ? (
+          <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
+            <LoadingSpinner size="sm" />
+            Loading their skills...
+          </div>
+        ) : senderTeachingSkills.length === 0 ? (
+          <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+            They have no teaching skills listed.
+          </p>
+        ) : (
+          <CustomSelect
+            id="edit-received-teaching"
+            value={teachingSkillId || undefined}
+            onChange={(value) => setTeachingSkillId(value ?? "")}
+            placeholder="Select a skill to learn"
+            options={senderTeachingSkills.map((skill) => ({
+              value: String(skill.id),
+              label: `${getSkillDisplayName(skill)} \u00b7 ${skill.experience_level}`,
+            }))}
+          />
+        )}
+        {fieldErrors.teaching_skill_id && (
+          <p className="text-sm text-destructive">
+            {fieldErrors.teaching_skill_id}
+          </p>
+        )}
+      </div>
+    )
 
   const learningField = (
     <div className="space-y-2">
       <Label htmlFor="send-learning-skill">
         {editorIsSender
-          ? "Skill you want to learn"
+          ? `What would you like to learn from ${receiver ? getDisplayName(receiver) : "them"}?`
           : "Skill you'll teach in return (optional)"}
       </Label>
       {receiverSkillsLoading ? (
@@ -280,12 +295,13 @@ export function SendExchangeRequestModal({
           This user has no teaching skills listed.
         </p>
       ) : (
-        <CustomSelect
-          id="send-learning-skill"
-          value={learningSkillId || undefined}
-          onChange={(value) => setLearningSkillId(value ?? "")}
-          placeholder="Select a learning skill"
-          options={
+<CustomSelect
+            id="send-learning-skill"
+            value={learningSkillId || undefined}
+            onChange={(value) => setLearningSkillId(value ?? "")}
+            placeholder="Select a learning skill"
+            disabled={learningLocked}
+            options={
             editorIsSender
               ? learningOptions
               : [{ value: "", label: "None" }, ...learningOptions]
@@ -300,24 +316,27 @@ export function SendExchangeRequestModal({
     </div>
   )
 
-  const oneWayCheckbox = (
+  const teachingOfferCheckbox = editorIsSender && (
     <div className="flex items-center gap-2">
       <input
-        id="send-one-way"
+        id="send-offer-skill"
         type="checkbox"
         className="size-4 rounded border-input accent-primary"
-        checked={isOneWay}
+        checked={offeringSkill}
+        disabled={teachingLocked}
         onChange={(e) => {
-          setIsOneWay(e.target.checked)
-          if (e.target.checked)
+          setOfferingSkill(e.target.checked)
+          if (!e.target.checked) {
+            setTeachingSkillId("")
             setFieldErrors((prev) => {
-              const { learning_skill_id: _removed, ...rest } = prev
+              const { teaching_skill_id: _removed, ...rest } = prev
               return rest
             })
+          }
         }}
       />
-      <Label htmlFor="send-one-way" className="cursor-pointer">
-        I&apos;m not looking for anything in return
+      <Label htmlFor="send-offer-skill" className="cursor-pointer">
+        I&apos;d also like to teach them a skill in return
       </Label>
     </div>
   )
@@ -357,9 +376,9 @@ export function SendExchangeRequestModal({
 
         {editorIsSender ? (
           <>
+            {learningField}
+            {teachingOfferCheckbox}
             {teachingField}
-            {oneWayCheckbox}
-            {!isOneWay && learningField}
           </>
         ) : (
           <>

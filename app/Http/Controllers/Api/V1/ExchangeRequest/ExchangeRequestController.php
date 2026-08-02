@@ -74,6 +74,7 @@ class ExchangeRequestController extends BaseController
             'receiver.profile',
             'teachingSkill.skill.categories',
             'learningSkill.skill.categories',
+            'history.editedBy.profile',
         ]);
 
         return $this->success(

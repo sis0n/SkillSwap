@@ -649,9 +649,10 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 ### Components
 
 - **ExchangeRequestsPage** — main page with Received / Sent tabs, pending count badge, and "New Request" button. **Received is the default tab** on first visit; Sent is shown only when the user explicitly switches.
-- **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons. Accept/Decline are shown to the pending decider (receiver for a new request; the non-editor after an edit). A "Awaiting sender/receiver confirmation" note appears while a re-confirmation is pending after an edit.
-- **ExchangeRequestDetailsModal** — read-only detail view for a single request: sender and receiver, teaching/learning skills (or one-way label), message, status badge, created date, and context-sensitive action buttons matching ExchangeRequestCard
-- **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, message input). Sender view adds a one-way checkbox; receiver edit view instead shows "Skill you'll teach in return" (optional, clearable via a None option) and the optional "Skill {sender} will teach you" selector. Saving requires at least one skill selected.
+- **ExchangeRequestCard** — single request card with other party avatar/name, teaching skill, learning skill (or one-way label), optional message, status badge, and action buttons. Accept/Decline are shown to the pending decider (receiver for a new request; the non-editor after an edit). A "Awaiting sender/receiver confirmation" note appears while a re-confirmation is pending after an edit. A **Details** button appears when `history.length > 0`, opening ExchangeRequestHistoryModal.
+- **ExchangeRequestDetailsModal** — read-only detail view for a single request: sender and receiver, teaching/learning skills (or one-way label), message, status badge, created date, and context-sensitive action buttons matching ExchangeRequestCard. Scoped only to the **current** state (history lives in ExchangeRequestHistoryModal).
+- **SendExchangeRequestModal** — modal form to send a new request (teaching skill selector, learning skill selector, message input). Sender view leads with **"What would you like to learn from {name}?"** (from the receiver's teaching skills) and adds an optional **"I'd also like to teach them a skill in return"** checkbox that toggles the teaching selector; receiver edit view instead shows "Skill you'll teach in return" (optional, clearable via a None option) and the optional "Skill {sender} will teach you" selector. Saving requires at least one skill selected. When editing an **accepted** request, the **other party's** chosen skill is locked/read-only (sender: teaching locked; receiver: learning locked) and its value is preserved on submit.
+- **ExchangeRequestHistoryModal** — dedicated modal showing the edit audit trail. Rendered on the card via a **Details** button shown only when `history.length > 0`. Displays persisted edits **oldest → newest** with avatar + name, date, and the **before** values of Teaching/Learning/Note; includes the note *"Only edits made after the request was accepted are recorded."* No fabricated created/accepted timeline entries.
 - **StatusBadge** — color-coded badge for pending/accepted/declined/cancelled (`completed` is added in Phase 9 and must not be rendered in Phase 7)
 
 ### States
@@ -668,20 +669,28 @@ Manage incoming and outgoing exchange requests. Users send a skill swap proposal
 
 - **Pending (awaiting me):** When the current user is the pending decider (receiver for a new request; the non-editor after an edit), shows Accept (primary) and Decline (outline) buttons
 - **Pending (awaiting them):** When the other party is the pending decider, shows Cancel (outline) button and the "Awaiting sender/receiver confirmation" note
-- **Accepted:** Sender shows Cancel (outline) button (matches the `accepted → cancelled` transition); Receiver shows no action buttons. Shows request date
+- **Accepted:** Sender shows Cancel (outline) and Edit; Receiver shows Edit (an accepted request is editable by either party). Shows request date
 - **Declined/Cancelled:** No action buttons; shows request date
 - **One-way:** Learning skill row replaced with "One-way exchange (no return skill requested)" italic label
+- **Details:** A **Details** button is shown only when the request has an edit history (`history.length > 0`); clicking opens ExchangeRequestHistoryModal
 
 #### SendExchangeRequestModal
 
 - **Loading:** Teaching skill selector shows spinner while fetching user's skills
 - **No teaching skills:** "No teaching skills yet — you can send the request without one, or add one later." (sender view; the field is optional)
 - **No receiver learning skills:** "This user has no teaching skills listed." (receiver's teaching-skill selector disabled)
-- **One-way checkbox:** Hides the learning skill selector when checked (sender view only)
+- **Teaching offer checkbox:** Sender-only toggle — **"I'd also like to teach them a skill in return"** toggles the (optional) "Skill you can teach" selector. When unchecked, no teaching skill is sent (pure learning request).
+- **Locked on accepted edit:** When editing an `accepted` request, the other party's chosen skill is disabled/read-only — sender: the "Skill you can teach" selector + its checkbox locked; receiver: the learning selector locked. Values are submitted unchanged.
 - **Receiver edit view:** no one-way checkbox. Shows "Skill you'll teach in return (optional)" — the receiver's own teaching skills, with a "None" option to clear it — and "Skill {sender} will teach you (optional)". At least one of the two must be selected on save.
 - **Saving:** Send/Save button shows spinner, form disabled
 - **Validation error:** Inline field error — e.g. "Please select at least one skill for the exchange."
 - **Success:** Modal closes, request list refreshes
+
+#### ExchangeRequestHistoryModal
+
+- **Context note:** *"Only edits made after the request was accepted are recorded."*
+- **Empty:** "No edit history for this request."
+- **Loaded:** Timeline of persisted edit entries **oldest → newest**, each showing editor avatar+name, timestamp, and the *before* Teaching/Learning/Note values, plus "Request reopened (pending) for re-confirmation."
 
 **Skill selector data sources:**
 - **Teaching Skill selector (sender's skills):** populated from `GET /api/v1/me/skills`, filtered client-side to `type === "teaching"` (the authenticated user is the sender). The backend create endpoint requires the chosen skill (if provided) to belong to the sender and be type "teaching" — the selector only offers skills that satisfy this.

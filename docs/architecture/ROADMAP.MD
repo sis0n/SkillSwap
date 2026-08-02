@@ -1,7 +1,7 @@
 # SkillSwap Roadmap
 > Version: 5.0.0
 > Project Stage: Minimum Viable Product (MVP)
-> Last Updated: 2026-07-29
+> Last Updated: 2026-08-02
 
 ---
 # Purpose
@@ -1624,7 +1624,7 @@ Validation:
 - [x] Create request — learning_skill (if provided) belongs to receiver and is "teaching" type
 - [x] At least one of teaching_skill_id / learning_skill_id must be provided
 - [x] Update request — sender can edit `pending`; either party can edit `accepted`; edit records `reconfirmation_required_by` = the non-editor and resets `accepted` → `pending` for re-confirmation
-- [x] Bidirectional duplicate guard — at most one active request per unordered pair (regardless of direction or skill combination)
+- [x] Same-direction same-skill duplicate guard — at most one active request per sender, receiver, and catalog `learning` skill (reverse-direction and different-skill requests are allowed)
 - [x] Self-request guard (sender_id !== receiver_id)
 - [x] Sender eligibility check (email verified, profile completion ≥ 5, teaching skill optional)
 - [x] Receiver eligibility check (email verified, profile completion ≥ 5, at least one skill)
@@ -1639,7 +1639,7 @@ The canonical rules live in FEATURES.MD → Exchange Requests (Phase 7). This ch
 - [x] Terminal states (`declined`, `cancelled`, `completed`) accept no further transitions
 - [x] `accepted → completed` is NOT exposed in Phase 7 (deferred to Phase 9)
 - [x] Idempotency — replaying a transition on the wrong source state returns 422
-- [x] Duplicate guard applies to the unordered pair, in both directions
+- [x] Duplicate guard scoped to same direction (sender → receiver) and same catalog `learning` skill
 - [x] Ordering contract — list returns `created_at DESC, id DESC`
 - [x] Concurrency — create/accept/decline/cancel run atomically in a DB transaction; accept/decline/cancel use conditional updates against the expected source state (optimistic concurrency, 422 on zero-row update)
 - [x] Message normalization — trim on create; empty trimmed value stored as `null`
@@ -1681,7 +1681,7 @@ Stage 2 is complete when:
 - [x] Migrations make `learning_skill_id` / `teaching_skill_id` nullable and add `reconfirmation_required_by`
 - [x] `ExchangeRequestController` created with all 7 endpoints
 - [x] `StoreExchangeRequestRequest` / `UpdateExchangeRequestRequest` validate all fields
-- [x] `ExchangeRequestService` implements ownership, bidirectional duplicate, self-request, eligibility, re-confirmation, and status transition rules
+- [x] `ExchangeRequestService` implements ownership, same-direction same-skill duplicate guard, self-request, eligibility, re-confirmation, edit-history capture, and status transition rules
 - [x] `ExchangeRequestResource` returns sender, receiver, skills, message, status, reconfirmation_required_by, timestamps
 - [x] Status transitions enforced (invalid transitions return 422)
 - [x] Idempotency enforced (replay on wrong source state returns 422)
@@ -1937,7 +1937,56 @@ Stage 5 is complete when:
 - [ ] `ROADMAP.md` has all Stage 1-5 items marked complete
 - [ ] No documentation inconsistencies exist between files
 
-### Phase 7 Completion Criteria
+### Phase 7.1 — Request Semantics & Duplicate Rule Refinement
+**Decisions applied to the create/edit flow (see FEATURES.MD → Exchange Requests):**
+
+- [x] Flipped and clarified semantics — `learning_skill` = what the sender wants to learn (drawn from the receiver's **teaching** skills, required); `teaching_skill` = the sender's offer back (**optional**)
+- [x] Sender is NOT required to have a teaching skill — pure learning requests allowed
+- [x] Duplicate guard scoped to **same direction (sender → receiver)** + **same catalog `learning` skill** only — reverse-direction and different-skill requests are NOT blocked
+- [x] Guard skipped entirely when `learning_skill_id` is `null` (skill-less request)
+- [x] New duplicate-violation message: `"You already have an active exchange with this user for this skill."`
+
+#### Frontend — Send/Edit Modal (`SendExchangeRequestModal`)
+- [x] Sender flow leads with "What would you like to learn from {name}?" populated from the receiver's teaching skills
+- [x] Optional "I'd also like to teach them a skill in return" checkbox toggles the teaching field
+- [x] Removed the old "I'm not looking for anything in return" checkbox
+- [x] Teaching select + checkbox are disabled/locked when editing an `accepted` request as the sender (the other party's chosen skill is read-only)
+- [x] When editing an `accepted` request as the receiver, the receiver's own `learning` selection is disabled (sender's chosen skill is read-only)
+- [x] Locked fields submit their existing value (never nulled) so the other party's choice is preserved
+
+### Phase 7.2 — Edit History / Audit Trail
+**Capture point:** `ExchangeRequestService::update()` recorded a history row ONLY when an `accepted` request is edited (the `accepted → pending` reopen path). Pending edits do NOT create history.
+
+#### Backend
+- [x] Create `exchange_request_history` migration/table (id, exchange_request_id FK cascade, edited_by FK users, teaching_skill_id FK, learning_skill_id FK, message, status, timestamps, index on exchange_request_id)
+- [x] Create `ExchangeRequestHistory` model with `BelongsTo` relations (`exchangeRequest`, `editedBy`, `teachingSkill`, `learningSkill`)
+- [x] `ExchangeRequest::history()` — `HasMany`, newest-first ordering (`latest('id')`), added to `LOAD_WITH`
+- [x] `ExchangeRequestService::recordHistoryIfAccepted()` — snapshots the **before** state (teaching_skill_id, learning_skill_id, message, status) + `edited_by` before applying the update
+- [x] Create `ExchangeRequestHistoryResource` (id, edited_by, teaching_skill, learning_skill, message, status, created_at)
+- [x] `ExchangeRequestResource` — exposes `history` (guarded by `relationLoaded('history')`, `[]` when not loaded — prevents `collection(null)` 500)
+- [x] `ExchangeRequestController::show()` — eager-loads `history.editedBy.profile`
+
+#### Frontend
+- [x] Extend `ExchangeRequest` type with `history: ExchangeRequestHistory[]`
+- [x] Create `ExchangeRequestHistoryModal` — dedicated modal, timeline of persisted edits, chronological (oldest → newest), context note: *"Only edits made after the request was accepted are recorded."*
+- [x] `ExchangeRequestCard` — shows a **Details** button only when `(request.history?.length ?? 0) > 0`, wired via `onViewHistory`
+- [x] `ExchangeRequestsPage` — owns `historyRequest` state and mounts the modal
+- [x] Removed the inline history accordion from `ExchangeRequestDetailsModal`
+- [x] Only **persisted** edit entries are displayed — no fabricated "Created/Accepted" timeline events
+
+### Phase 7.3 — Bug Fixes
+- [x] Fixed `ExchangeRequestResource::collection(null)` 500 on `show` by guarding `relationLoaded('history')`
+- [x] Fixed skills create/update 500 — `UserSkillService` normalizes `featured` (`null`/absent → `false` on create; cast to bool on update only when present)
+
+### Phase 7 Testing
+- [x] DUPLICATE test — same-direction same-skill returns 422 with the new message
+- [x] DUPLICATE test — accepted same-skill repeat returns 422
+- [x] DUPLICATE test — different-skill active request still allowed (201)
+- [x] DUPLICATE test — reverse-direction same-skill allowed (201)
+- [x] HISTORY test — editing an `accepted` request records one history row (asserts before-values + editor + JSON shape)
+- [x] HISTORY test — editing a `pending` request does NOT record history
+- [x] HISTORY test — `show` returns `history: []` when none, and returns history after an accepted edit
+- [x] SKILLS test — creating a skill with `featured: null` defaults to `false`
 Phase 7 is fully complete only when Stages 1-5 are all complete:
 
 - [ ] Stage 1 — Frontend UI complete
