@@ -2056,7 +2056,7 @@ Only available after an exchange request is accepted. A conversation is created 
 - A conversation is created when the exchange request transitions to `accepted`, atomically within the same DB transaction as the transition (no partial state — acceptance and conversation creation succeed or fail together).
 - Conversations are **always active** and immutable after creation. Their participants and linked exchange request cannot change.
 - A conversation persists for the lifetime of the exchange; it is not deleted when the request is cancelled.
-- Deleting the exchange request cascades the conversation and its messages. Deleting a participant account cascades their messages only; the conversation and the other participant's messages are preserved.
+- Deleting the exchange request cascades the conversation and its messages. **Deleting a participant account is an unresolved schema/data-retention concern:** the current FK chain (`users → exchange_requests → conversations → messages`, all `cascadeOnDelete`) cascades the entire thread. Phase 8 Stage 2 does not implement or change participant-deletion behavior; reconciling this with the long-term preservation intent requires a separate data-retention architecture decision.
 - `archived`, `locked`, and `closed` are future-phase states and are NOT part of Phase 8.
 
 ### Participants
@@ -2100,6 +2100,65 @@ This is **not** an API versioning strategy. It documents how the Messaging API c
 
 `ConversationResource` represents **conversation metadata only** (participants, `last_message` summary, `unread_count`, `updated_at`); `MessageResource` represents **message data only**. Neither resource exposes the other's data — `ConversationResource` never embeds a full thread.
 
+### List Conversations (GET /conversations)
+
+Authenticated user only. Returns a paginated collection of the authenticated user's conversation metadata (never the message thread). A user's conversations are those whose linked exchange request involves them as sender or receiver.
+
+**Query Parameters:**
+
+| Field    | Type    | Default | Description                         |
+| -------- | ------- | ------- | ----------------------------------- |
+| page     | integer | 1       | Offset-based page number            |
+| per_page | integer | 20      | Items per page (minimum 1, maximum 50) |
+
+**Success Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Conversations retrieved.",
+  "data": {
+    "conversations": [
+      {
+        "id": 1,
+        "exchange_request_id": 4,
+        "other_user": { "...UserResource..." },
+        "last_message": { "...MessageResource..." },
+        "unread_count": 2,
+        "updated_at": "2026-07-29T12:00:00.000000Z"
+      }
+    ]
+  },
+  "meta": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 20,
+    "total": 1
+  }
+}
+```
+
+**Notes:**
+- Ordered by `updated_at DESC` (sole ordering mechanism; `id ASC` is the deterministic tie-breaker).
+- `other_user` is the authenticated user's counterpart — each conversation has exactly two participants.
+- `last_message` is the most recent message (`null` when the conversation is empty — empty conversations are valid and appear in the list).
+- `unread_count` counts incoming messages with `read_at IS NULL` (sent by the other participant). The sidebar unread badge is the SUM of every conversation's `unread_count`; no dedicated endpoint exists.
+- Listing conversations does NOT trigger read tracking.
+
+**Error Responses:**
+- 401: Unauthenticated
+
+### Show Conversation (GET /conversations/{id})
+
+Metadata for a single selected conversation (participants, `exchange_request_id`, `updated_at`). Participant-only. Does NOT return the message thread.
+
+**Success Response (200):** `data.conversation` as a single `ConversationResource` (`message: "Conversation retrieved."`).
+
+**Error Responses:**
+- 401: Unauthenticated
+- 403: You are not part of this conversation.
+- 404: Conversation not found
+
 ---
 
 # Messages
@@ -2118,9 +2177,56 @@ A Phase 8 message supports exactly two states: **sent** (created) and **read** (
 - **`GET /conversations/{id}/messages`** — the message thread, paginated (offset-based), ordered by `created_at ASC, id ASC` (oldest → newest). `created_at` is the ONLY chronological ordering field; `id ASC` exists ONLY as the deterministic tie-breaker when `created_at` values match — `id` must never be used as the primary chronological ordering mechanism. Triggers read tracking (see above). Use for opening a conversation and every thread refetch/poll.
 - **`POST /conversations/{id}/messages`** — send a message. Participant-only. Stored with `sender_id` = authenticated user, `read_at = null`; updates the conversation's `updated_at`.
 
-Body
+### List Messages (GET /conversations/{id}/messages)
 
-- message (required, string, max 2000, trimmed; whitespace-only rejected with 422)
+Participant-only. Returns the paginated message thread. **Triggers read tracking**: every unread incoming message in the conversation (`sender_id != authenticated user AND read_at IS NULL`) is marked read — the entire conversation, not only the messages on the current page. The authenticated user's own messages are never marked. The action is a no-op when there are no unread incoming messages (including empty conversations).
+
+**Query Parameters:**
+
+| Field    | Type    | Default | Description                         |
+| -------- | ------- | ------- | ----------------------------------- |
+| page     | integer | 1       | Offset-based page number            |
+| per_page | integer | 20      | Items per page (minimum 1, maximum 50) |
+
+**Success Response (200):** `data.messages` as a paginated collection of `MessageResource`, each shaped as below (`message: "Messages retrieved."`).
+
+```json
+{
+  "id": 12,
+  "conversation_id": 1,
+  "sender_id": 3,
+  "sender": { "...UserResource..." },
+  "body": "Hi!",
+  "read_at": null,
+  "created_at": "2026-07-29T12:00:00.000000Z"
+}
+```
+
+**Error Responses:**
+- 401: Unauthenticated
+- 403: You are not part of this conversation.
+- 404: Conversation not found
+
+### Send Message (POST /conversations/{id}/messages)
+
+Participant-only. Sends a message. The conversation's `updated_at` is updated atomically with the message write, driving conversation ordering. A failed write (validation or DB error) has NO side effects: the conversation's `updated_at`, unread counts, and metadata remain unchanged.
+
+**Request Body:**
+
+| Field   | Type   | Required | Description                       |
+| ------- | ------ | -------- | --------------------------------- |
+| message | string | yes      | Message body (max 2000 characters) |
+
+**Validation Rules:**
+- `message`: required, string, max:2000 — trimmed of leading/trailing whitespace; whitespace-only values are rejected with 422.
+
+**Success Response (201):** `data.message` as a single `MessageResource` (shape above, `read_at: null`) with `message: "Message sent."`.
+
+**Error Responses:**
+- 401: Unauthenticated
+- 403: You are not part of this conversation.
+- 404: Conversation not found
+- 422: The message field is required. / The message field must be a string. / The message field must not be greater than 2000 characters.
 
 ### Failure Behavior (canonical)
 

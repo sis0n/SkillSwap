@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Conversation\ConversationController;
 use App\Http\Controllers\Api\V1\HealthCheckController;
 use App\Http\Controllers\Api\V1\LanguageController;
 use App\Http\Controllers\Api\V1\Discover\DiscoverController;
@@ -134,8 +135,20 @@ Route::name('api.')
                     ->name('me.exchange-requests.cancel');
 
             });
-        });
 
+            Route::get('conversations', [ConversationController::class, 'index'])
+                ->name('conversations.index');
+
+            Route::get('conversations/{conversation}', [ConversationController::class, 'show'])
+                ->name('conversations.show');
+
+            Route::get('conversations/{conversation}/messages', [ConversationController::class, 'messages'])
+                ->name('conversations.messages.index');
+
+            Route::post('conversations/{conversation}/messages', [ConversationController::class, 'store'])
+                ->name('conversations.messages.store');
+
+        });
         Route::get('users/{username}', [ProfileController::class, 'showPublic'])
             ->name('users.show');
     });

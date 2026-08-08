@@ -629,7 +629,7 @@ The following invariants govern the Phase 8 Messaging architecture. All current 
 - A conversation is **active** from creation and remains active for the lifetime of the exchange; it is not deleted when the request is cancelled.
 - **Empty conversations are valid.** A conversation exists with zero messages immediately upon acceptance, appears in the conversation list, and can be opened (the thread shows an empty state with the message input enabled).
 - **Deleting the exchange request** cascades the conversation and all its messages (FK cascade delete).
-- **Deleting a participant account** cascades their messages only (FK cascade delete); the conversation and the other participant's messages are preserved.
+- **Deleting a participant account is an unresolved schema/data-retention concern.** The current Phase 2 FK chain (`users → exchange_requests → conversations → messages`, all `cascadeOnDelete`) means physically deleting a participant cascades the exchange request, the conversation, and all messages. This conflicts with the long-term intent that a deleted participant's conversation and the other participant's messages be preserved. **Phase 8 Stage 2 neither implements nor changes participant-deletion behavior**, and no schema change was made for it. Reconciling this requires a separate data-retention architecture decision (e.g., `messages.sender_id ON DELETE SET NULL`, soft-deleted user accounts, or revised `exchange_requests` deletion semantics) and must not be implemented implicitly.
 - Conversations cannot be **archived, locked, or closed** in Phase 8. These lifecycle states are reserved for future phases and must NOT be implemented.
 
 ### Conversation State (canonical)

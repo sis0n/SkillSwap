@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Exchange;
 
+use App\Models\Conversation;
 use App\Models\ExchangeRequest;
 use App\Models\Profile;
 use App\Models\User;
@@ -107,6 +108,10 @@ class ExchangeRequestService
             if ($affected === 0) {
                 throw new ExchangeRequestException('Only pending requests can be accepted.');
             }
+
+            Conversation::firstOrCreate([
+                'exchange_request_id' => $exchangeRequest->id,
+            ]);
 
             return $exchangeRequest->fresh(self::LOAD_WITH);
         });
