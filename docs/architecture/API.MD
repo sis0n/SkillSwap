@@ -2139,7 +2139,7 @@ Authenticated user only. Returns a paginated collection of the authenticated use
 ```
 
 **Notes:**
-- Ordered by `updated_at DESC` (sole ordering mechanism; `id ASC` is the deterministic tie-breaker).
+- Ordered by `updated_at DESC` — the sole conversation-ordering mechanism (most recent activity). No other ordering signal is applied to the list.
 - `other_user` is the authenticated user's counterpart — each conversation has exactly two participants.
 - `last_message` is the most recent message (`null` when the conversation is empty — empty conversations are valid and appear in the list).
 - `unread_count` counts incoming messages with `read_at IS NULL` (sent by the other participant). The sidebar unread badge is the SUM of every conversation's `unread_count`; no dedicated endpoint exists.

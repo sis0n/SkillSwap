@@ -30,10 +30,10 @@ Keep these documents synchronized throughout development.
 
 ---
 # Current Focus
-Current Phase: Phase 7 — Exchange Requests
+Current Phase: Phase 8 — Messaging
 Current Status: Completed
 
-Phase 7 — Exchange Requests (Stages 1-5 ✅ Complete)
+Phase 8 — Messaging (Stages 1-5 ✅ Complete)
 
 ---
 
@@ -55,10 +55,10 @@ Phase 7 — Exchange Requests (Stages 1-5 ✅ Complete)
 
 - Phase 6 — Discover (Stages 1-5 ✅ Complete)
 - Phase 7 — Exchange Requests (Stages 1-5 ✅ Complete)
+- Phase 8 — Messaging (Stages 1-5 ✅ Complete)
 
 **Remaining:**
 
-- Phase 8 — Messaging
 - Phase 9 — Learning Sessions
 - Phase 10 — Reviews
 - Phase 11 — Pre-Release QA
@@ -2010,7 +2010,7 @@ Phase 7 is fully complete only when Stages 1-5 are all complete:
 
 ---
 ## Phase 8 — Messaging
-Status: Pending
+Status: Completed
 
 ### Goal
 Provide matched users with private one-to-one messaging.
@@ -2066,7 +2066,7 @@ Messaging requires authentication. Listing conversations, viewing messages, and 
 - `ExchangeRequest::conversation()` HasOne relationship (Phase 2 model)
 - Documented endpoints in `API.MD` (`/conversations`, `/conversations/{id}`, `/conversations/{id}/messages`) and `UI.MD` (Conversations / Messages components)
 
-> **Naming note:** the sidebar labels the page "Messages" at `/messages`, while `UI.MD`/`API.MD` refer to "Conversations" and `/conversations` endpoints. Stage 5 must reconcile this naming consistently across docs.
+> **Naming note (reconciled in Stage 5):** the sidebar labels the page "Messages" at `/messages`, while `UI.MD`/`API.MD` refer to "Conversations" and `/conversations` endpoints. This is intentional, not a conflict: **"Messages" is the user-facing sidebar/page label** for the messaging feature, while **"Conversations" is the internal feature/data-model name** (resources, `/conversations` endpoints, and the `["conversations"]` cache). All documentation uses both consistently — the sidebar and page are "Messages"; the API, data model, and cache are "Conversations".
 
 ---
 
@@ -2514,25 +2514,25 @@ Stage 5 must not:
 ### Stage 5 Completion Criteria
 Stage 5 is complete when:
 
-- [ ] `API.md` is updated with final contract (endpoint responsibilities, ordering, read-tracking scope, lifecycle, state, participants, pagination strategy, failure behavior)
-- [ ] `FEATURES.md` Messaging section matches implemented behavior (architecture principles, lifecycle, state, message lifecycle, participants, ordering determinism, pagination, polling contract, read-tracking scope, resource responsibilities, cache ownership, transaction boundaries, failure behavior, future compatibility)
-- [ ] `UI.md` Messaging section matches the final UI (auto-scroll behavior, polling contract, empty states, unread-badge derivation, cache ownership, and the "Messages" vs "Conversations" naming reconciled with the sidebar)
-- [ ] `ROADMAP.md` Stage 1-5 checklists are marked complete
-- [ ] One canonical conversation-ordering rule (`updated_at DESC`) appears consistently — no `created_at DESC` conversation ordering anywhere
-- [ ] One canonical read-tracking rule appears consistently (message-list retrieval; EVERY unread incoming message in the conversation)
-- [ ] Message-ordering field responsibility is stated consistently (`created_at` = ONLY chronological field; `id` = tie-breaker only, never primary chronology)
-- [ ] The API Evolution Policy is present and consistent in ROADMAP, FEATURES.MD, and API.MD
-- [ ] Lifecycle, state, participants, transaction-boundary, and failure-behavior rules are stated identically in ROADMAP, FEATURES.MD, and API.MD
-- [ ] No documentation inconsistencies exist between files
+- [x] `API.md` is updated with final contract (endpoint responsibilities, ordering, read-tracking scope, lifecycle, state, participants, pagination strategy, failure behavior)
+- [x] `FEATURES.md` Messaging section matches implemented behavior (architecture principles, lifecycle, state, message lifecycle, participants, ordering determinism, pagination, polling contract, read-tracking scope, resource responsibilities, cache ownership, transaction boundaries, failure behavior, future compatibility)
+- [x] `UI.md` Messaging section matches the final UI (auto-scroll behavior, polling contract, empty states, unread-badge derivation, cache ownership, and the "Messages" vs "Conversations" naming reconciled with the sidebar)
+- [x] `ROADMAP.md` Stage 1-5 checklists are marked complete
+- [x] One canonical conversation-ordering rule (`updated_at DESC`) appears consistently — no `created_at DESC` conversation ordering anywhere
+- [x] One canonical read-tracking rule appears consistently (message-list retrieval; EVERY unread incoming message in the conversation)
+- [x] Message-ordering field responsibility is stated consistently (`created_at` = ONLY chronological field; `id` = tie-breaker only, never primary chronology)
+- [x] The API Evolution Policy is present and consistent in ROADMAP, FEATURES.MD, and API.MD
+- [x] Lifecycle, state, participants, transaction-boundary, and failure-behavior rules are stated identically in ROADMAP, FEATURES.MD, and API.MD
+- [x] No documentation inconsistencies exist between files
 
 Phase 8 is fully complete only when Stages 1-5 are all complete:
 
-- [ ] Stage 1 — Frontend UI complete
-- [ ] Stage 2 — Backend API complete
-- [ ] Stage 3 — Frontend Integration complete
-- [ ] Stage 4 — Testing & Hardening complete
-- [ ] Stage 5 — Documentation Synchronization complete
-- [ ] No known regressions remain
+- [x] Stage 1 — Frontend UI complete
+- [x] Stage 2 — Backend API complete
+- [x] Stage 3 — Frontend Integration complete
+- [x] Stage 4 — Testing & Hardening complete
+- [x] Stage 5 — Documentation Synchronization complete
+- [x] No known regressions remain
 
 ---
 ## Phase 9 — Learning Sessions

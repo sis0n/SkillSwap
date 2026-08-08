@@ -1313,9 +1313,9 @@ For the MVP, the Dashboard "Active Exchanges" count is DERIVED from the existing
 
 ## Messaging
 
-- [ ] Send Message
-- [ ] Receive Message
-- [ ] Conversation History
+- [x] Send Message
+- [x] Receive Message
+- [x] Conversation History
 
 ---
 

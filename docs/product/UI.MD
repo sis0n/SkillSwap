@@ -738,6 +738,8 @@ Phase 7 sends no notifications (no email, no push, no in-app alerts). Users disc
 
 ## Conversations
 
+> **Naming note:** the sidebar labels the messaging feature **"Messages"** (page at `/messages`), while the feature is referred to internally as **"Conversations"** (the `/conversations` endpoints, the `Conversation` model, and the `["conversations"]` cache). Both names describe the same feature — "Messages" is the user-facing sidebar/page label, "Conversations" is the internal feature name. The two sections below (Conversations = the conversation list; Messages = the chat window) describe that single feature.
+
 ### Purpose
 
 View conversations.
@@ -760,7 +762,7 @@ GET /api/v1/conversations
 
 ### Pagination
 
-- The conversation list uses offset-based pagination from the API (`page`, `per_page`). The frontend loads more on demand; there is no fixed infinite-scroll contract.
+- The API returns the conversation list with offset-based pagination (`page`, `per_page` — default 20, max 50). The current frontend requests the default first page of the list; there is no on-demand pagination and no infinite-scroll contract.
 
 ### Unread Badge
 
@@ -788,6 +790,8 @@ Communicate with matched users.
 
 ### APIs
 
+GET /api/v1/conversations/{id}
+
 GET /api/v1/conversations/{id}/messages
 
 POST /api/v1/conversations/{id}/messages
@@ -801,6 +805,13 @@ POST /api/v1/conversations/{id}/messages
 - "Select a conversation" state when no thread is selected (desktop two-pane).
 - Incoming unread messages appear as unread until the message list is retrieved (read tracking), which marks EVERY unread incoming message in the conversation as read — not only those visible on the current page. The authenticated user's own messages are always read.
 - Loading skeleton, error state with retry.
+- The thread is fetched in one request using the backend's maximum `per_page` (50) — a frontend implementation detail, not a separate API contract. The backend supports offset-based pagination (`page`, `per_page` — default 20, max 50).
+
+### Responsive Layout
+
+- **Desktop / wide tablet (≥ the `lg` breakpoint):** two-pane layout — the conversation list on the left and the chat window on the right; the "Select a conversation" state fills the right pane until a thread is chosen.
+- **Mobile / narrow tablet:** single-pane layout — the conversation list is shown first; selecting a conversation replaces it with the thread, and a back button in the thread header returns to the list.
+- **Dark mode:** all messaging components (list, thread, message bubbles, input, unread badges) use the theme CSS variables and adapt to dark mode.
 
 ### Polling Contract
 
