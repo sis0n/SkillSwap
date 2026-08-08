@@ -19,6 +19,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { usePendingExchangeRequestCount } from "@/features/exchange-request/hooks/useExchangeRequests"
+import { useUnreadConversationCount } from "@/features/messaging/hooks/useMessaging"
 import { useLogout } from "@/hooks/useAuth"
 import { useTheme } from "@/hooks/useTheme"
 import { useAuthStore } from "@/stores/authStore"
@@ -43,6 +44,7 @@ export function AuthenticatedLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: pendingCount = 0 } = usePendingExchangeRequestCount()
+  const { data: unreadConversationCount = 0 } = useUnreadConversationCount()
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -78,6 +80,17 @@ export function AuthenticatedLayout() {
                     }`}
                   >
                     {pendingCount}
+                  </span>
+                )}
+                {link.href === "/messages" && unreadConversationCount > 0 && (
+                  <span
+                    className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      isActive
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    {unreadConversationCount}
                   </span>
                 )}
               </Link>
@@ -235,6 +248,18 @@ export function AuthenticatedLayout() {
                           {pendingCount}
                         </span>
                       )}
+                      {link.href === "/messages" &&
+                        unreadConversationCount > 0 && (
+                          <span
+                            className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              location.pathname === link.href
+                                ? "bg-primary-foreground text-primary"
+                                : "bg-primary text-primary-foreground"
+                            }`}
+                          >
+                            {unreadConversationCount}
+                          </span>
+                        )}
                     </Link>
                   )
                 })}

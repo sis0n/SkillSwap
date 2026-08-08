@@ -31,11 +31,12 @@ Keep these documents synchronized throughout development.
 ---
 # Current Focus
 Current Phase: Phase 7 — Exchange Requests
-Current Status: Pending
+Current Status: Completed
 
-Phase 6 — Discover (Stages 1-5) is fully complete.
+Phase 7 — Exchange Requests (Stages 1-5 ✅ Complete)
 
 ---
+
 # Project Progress
 **Completed:**
 
@@ -53,16 +54,15 @@ Phase 6 — Discover (Stages 1-5) is fully complete.
 **Completed:**
 
 - Phase 6 — Discover (Stages 1-5 ✅ Complete)
+- Phase 7 — Exchange Requests (Stages 1-5 ✅ Complete)
 
 **Remaining:**
 
-- Phase 7 — Exchange Requests
 - Phase 8 — Messaging
 - Phase 9 — Learning Sessions
 - Phase 10 — Reviews
 - Phase 11 — Pre-Release QA
 - Phase 12 — Deployment
-
 ---
 # MVP Milestones
 ## Phase 1 — Project Foundation
@@ -1438,7 +1438,7 @@ Phase 6 is fully complete only when Stages 1-5 are all complete:
 
 ---
 ## Phase 7 — Exchange Requests
-Status: Pending
+Status: Completed
 
 ### Goal
 Let users send, accept, and reject skill exchange match requests. Phase 7 is the first interactive feature that connects users after discovery. It introduces the exchange request lifecycle: pending → accepted/declined/cancelled, with one-way teaching support.
@@ -1737,63 +1737,68 @@ Stage 3 must not modify:
 - Any PHP or backend code
 
 ### API
-- [ ] Create `getExchangeRequests()`
-- [ ] Create `sendExchangeRequest(data)`
-- [ ] Create `updateExchangeRequest(id, data)`
-- [ ] Create `acceptExchangeRequest(id)`
-- [ ] Create `declineExchangeRequest(id)`
-- [ ] Create `cancelExchangeRequest(id)`
+- [x] Create `listExchangeRequests(params)` (role/status filters, pagination)
+- [x] Create `getExchangeRequest(id)`
+- [x] Create `createExchangeRequest(data)` (receiver_id, teaching_skill_id?, learning_skill_id?, message?)
+- [x] Create `updateExchangeRequest(id, data)` (skills/message; accepted-edit reopens for re-confirmation)
+- [x] Create `acceptExchangeRequest(id)`
+- [x] Create `declineExchangeRequest(id)`
+- [x] Create `cancelExchangeRequest(id)`
 
 ### Hooks
-- [ ] Create `useExchangeRequests()` (query, staleTime 30s, queryKey `["exchange-requests"]`)
-- [ ] Create `useSendExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
-- [ ] Create `useUpdateExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
-- [ ] Create `useAcceptExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
-- [ ] Create `useDeclineExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
-- [ ] Create `useCancelExchangeRequest()` (mutation, invalidates `["exchange-requests"]` and the Dashboard query key)
+- [x] Create `useExchangeRequests(params)` (query, staleTime 30s, queryKey `["exchange-requests"]`, `keepPreviousData`)
+- [x] Create `useExchangeRequest(id)` (single-request query, disabled when `id` is null)
+- [x] Create `usePendingExchangeRequestCount()` (derived from list `meta.total`)
+- [x] Create `useActiveExchangeCount()` (Dashboard "Active Exchanges" — queryKey `["dashboard"]`)
+- [x] Create `useCreateExchangeRequest()` (mutation, invalidates `["exchange-requests"]`, `["exchange-request"]`, and `["dashboard"]`)
+- [x] Create `useUpdateExchangeRequest()` (mutation, invalidates `["exchange-requests"]`, `["exchange-request"]`, and `["dashboard"]`)
+- [x] Create `useAcceptExchangeRequest()` (mutation, invalidates `["exchange-requests"]`, `["exchange-request"]`, and `["dashboard"]`)
+- [x] Create `useDeclineExchangeRequest()` (mutation, invalidates `["exchange-requests"]`, `["exchange-request"]`, and `["dashboard"]`)
+- [x] Create `useCancelExchangeRequest()` (mutation, invalidates `["exchange-requests"]`, `["exchange-request"]`, and `["dashboard"]`)
 
 ### Schemas
-- [ ] Create `sendExchangeRequestSchema` (Zod: receiver_id, teaching_skill_id?, learning_skill_id?, message? max 500; at least one of teaching/learning required)
-- [ ] Schema normalizes `message` — trims whitespace; trimmed-empty becomes `null` (matches backend; whitespace-only never sent as a non-empty string)
+- [x] Create `sendExchangeRequestSchema` (Zod: receiver_id, teaching_skill_id?, learning_skill_id?, message? max 500; at least one of teaching/learning enforced at submit)
+- [x] Schema normalizes `message` — trims whitespace; trimmed-empty becomes `null` (matches backend; whitespace-only never sent as a non-empty string)
 
 ### Integration
-- [ ] Replace visual-only UI with real API data
-- [ ] Connect `ExchangeRequestsPage` list (Received / Sent tabs)
-- [ ] Connect pending count badge
-- [ ] Connect `ExchangeRequestCard` Accept / Decline / Cancel actions (decider-aware: pending decider sees Accept/Decline)
-- [ ] Connect `SendExchangeRequestModal` submit (with one-way support) and edit mode (sender or receiver)
-- [ ] Connect edit flow — Edit button on cards/details opens the modal prefilled; saving an accepted request shows "Awaiting sender/receiver confirmation" on the card
-- [ ] Populate Teaching Skill selector from `GET /me/skills` filtered to `type === "teaching"` (sender's skills)
-- [ ] Populate Learning Skill selector from `GET /users/{username}` → `data.user.user_skills.teaching` (receiver's teaching skills)
-- [ ] Wire up ViewSkillsModal "Send Exchange Request" button
-- [ ] Wire up PublicProfilePage "Send Exchange Request" link
-- [ ] Wire up Dashboard "Active Exchanges" count (derived from `["exchange-requests"]` data)
-- [ ] Connect loading state
-- [ ] Connect empty states (received / sent)
-- [ ] Connect error state with retry
+- [x] Replace visual-only UI with real API data (placeholder fixtures removed)
+- [x] Connect `ExchangeRequestsPage` list (Received / Sent tabs)
+- [x] Connect pending count badge (real `meta.total`)
+- [x] Connect `ExchangeRequestCard` Accept / Decline / Cancel actions (decider-aware: pending decider sees Accept/Decline)
+- [x] Connect `SendExchangeRequestModal` — sender flow leads with the learning selector ("What would you like to learn from {name}?") and adds an optional "I'd also like to teach them a skill in return" teaching checkbox; receiver edit view shows "Skill you'll teach in return" + "Skill {sender} will teach you"; at least one skill required
+- [x] Connect edit flow — Edit button on cards/details opens the modal prefilled; saving an accepted request shows "Awaiting sender/receiver confirmation"; locked fields (other party's chosen skill) submit their existing value
+- [x] Connect `ExchangeRequestHistoryModal` — Details button on cards (shown when `history.length > 0`) opens the edit-audit timeline
+- [x] Populate the learning selector from the receiver's teaching skills (`GET /users/{username}` → `data.user.user_skills.teaching`)
+- [x] Populate the teaching selector from `GET /me/skills` filtered to `type === "teaching"` (sender's skills, gated on modal open)
+- [x] Wire up ViewSkillsModal "Send Exchange Request" button
+- [x] Wire up PublicProfilePage "Send Exchange Request" link
+- [x] Wire up Dashboard "Active Exchanges" card (via `useActiveExchangeCount`)
+- [x] Connect loading state
+- [x] Connect empty states (received / sent)
+- [x] Connect error state with retry
 
 ### Cache Invalidation
-- [ ] Every successful mutation (create, accept, decline, cancel) invalidates `["exchange-requests"]` AND the Dashboard query key used by the project
-- [ ] Dashboard "Active Exchanges" card updates immediately after mutations (no manual refresh)
+- [x] Every successful mutation (create, accept, decline, cancel, edit) invalidates `["exchange-requests"]`, `["exchange-request"]`, AND the `["dashboard"]` query key
+- [x] Dashboard "Active Exchanges" card updates immediately after mutations (no manual refresh)
 
 ### Stage 3 Completion Criteria
 Stage 3 is complete when:
 
-- [ ] API client functions exist and are used
-- [ ] React Query hooks integrate with the API
-- [ ] `ExchangeRequestsPage` renders real request data in both tabs
-- [ ] Pending count badge reflects real data
-- [ ] Accept/Decline/Cancel actions update status via API and invalidate cache
-- [ ] Edit action updates skills/message via API and invalidates cache; accepted-edit shows the re-confirmation note
-- [ ] Mutations invalidate both `["exchange-requests"]` and the Dashboard query key
-- [ ] `SendExchangeRequestModal` sends real requests including one-way, and edits as either party
-- [ ] Skill selectors use the documented data sources (`GET /me/skills` teaching; `GET /users/{username}` teaching)
-- [ ] ViewSkillsModal and PublicProfilePage buttons initiate the real flow
-- [ ] Dashboard shows a real exchange count
-- [ ] Loading, empty, and error states are API-driven
-- [ ] No mock data, no fake API, no temporary workarounds remain in the codebase
-- [ ] Vite/TypeScript build passes clean (no exchange-request related errors)
-- [ ] ESLint — not configured in project (no exchange-request related issues)
+- [x] API client functions exist and are used
+- [x] React Query hooks integrate with the API
+- [x] `ExchangeRequestsPage` renders real request data in both tabs
+- [x] Pending count badge reflects real data
+- [x] Accept/Decline/Cancel actions update status via API and invalidate cache
+- [x] Edit action updates skills/message via API and invalidates cache; accepted-edit shows the re-confirmation note
+- [x] Mutations invalidate `["exchange-requests"]`, `["exchange-request"]`, and the `["dashboard"]` query key
+- [x] `SendExchangeRequestModal` sends real requests (pure-learning and with a teaching offer) and edits as either party
+- [x] Skill selectors use the documented data sources (`GET /me/skills` teaching; `GET /users/{username}` teaching)
+- [x] ViewSkillsModal and PublicProfilePage buttons initiate the real flow
+- [x] Dashboard shows a real exchange count
+- [x] Loading, empty, and error states are API-driven
+- [x] No mock data, no fake API, no temporary workarounds remain in the codebase
+- [x] Vite/TypeScript build passes clean (no exchange-request related errors)
+- [x] ESLint — not configured in project (no exchange-request related issues)
 
 Next stage (Stage 4) must not begin until all items above are satisfied.
 
@@ -1826,81 +1831,88 @@ Stage 4 must not:
 - Alter database schema
 
 ### Backend
-- [ ] Guest cannot list exchange requests (401)
-- [ ] Guest cannot create exchange requests (401)
-- [ ] Authenticated user can list exchange requests
-- [ ] User can send request with teaching + learning skill
-- [ ] User can send one-way exchange request (no learning_skill_id)
-- [ ] User can send request with teaching skill only (no learning_skill_id)
-- [ ] Cannot send request with no skills at all (422)
-- [ ] Cannot send duplicate active request (422)
-- [ ] Cannot send reverse-direction request while an active request exists (422)
-- [ ] Cannot send request to self (422)
-- [ ] Receiver can accept request (200, status → accepted)
-- [ ] Sender cannot accept request (403)
-- [ ] Receiver can decline request (200, status → declined)
-- [ ] Sender can cancel pending request (200, status → cancelled)
-- [ ] Sender can cancel accepted request (200, status → cancelled)
-- [ ] Receiver cannot cancel request (403)
-- [ ] Cannot accept declined/cancelled request (422)
-- [ ] User can view own exchange request
-- [ ] User cannot view unrelated exchange request (403)
-- [ ] Validation: missing receiver_id (422)
-- [ ] Validation: teaching_skill_id with wrong owner/type (422)
-- [ ] Validation: learning_skill_id with wrong owner/type (422)
-- [ ] Request appears in both sender and receiver lists
-- [ ] Idempotency: accept an accepted request (422)
-- [ ] Idempotency: decline a declined request (422)
-- [ ] Idempotency: cancel a cancelled request (422)
-- [ ] Idempotency: accept a cancelled request (422)
-- [ ] Idempotency: decline a completed request (422)
-- [ ] Eligibility: receiver with unverified email (422)
-- [ ] Eligibility: receiver with incomplete profile (422)
-- [ ] Eligibility: receiver with no skills (422)
-- [ ] Ordering: list returns newest-first (`created_at DESC, id DESC`)
-- [ ] Pagination: list honors `per_page` default 20, max 50, and `page`
-- [ ] Filtering: list filters by `role` (sender/receiver) and `status`
-- [ ] Message: whitespace-only message stored as `null`
-- [ ] Concurrency: two simultaneous Accepts on the same pending request — exactly one succeeds (200, status → accepted); the other's conditional update matches zero rows and returns 422; the final DB state is consistent (single accepted record)
-- [ ] Concurrency: Accept racing Sender Cancel on the same pending request — exactly one transition succeeds; the loser returns 422
-- [ ] New request is allowed after a previous request is declined/cancelled/completed
+- [x] Guest cannot list exchange requests (401)
+- [x] Guest cannot create exchange requests (401)
+- [x] Authenticated user can list exchange requests
+- [x] User can send request with teaching + learning skill
+- [x] User can send one-way exchange request (no learning_skill_id)
+- [x] User can send request with teaching skill only (no learning_skill_id)
+- [x] Cannot send request with no skills at all (422)
+- [x] Cannot send duplicate active request — same direction (sender → receiver) + same catalog `learning` skill (422, "You already have an active exchange with this user for this skill.")
+- [x] Different-skill active request while another is active is allowed (201)
+- [x] Reverse-direction request for the same skill is allowed (201)
+- [x] Cannot send request to self (422)
+- [x] Receiver can accept request (200, status → accepted)
+- [x] Sender cannot accept request (403)
+- [x] Receiver can decline request (200, status → declined)
+- [x] Sender can cancel pending request (200, status → cancelled)
+- [x] Sender can cancel accepted request (200, status → cancelled)
+- [x] Receiver cannot cancel request (403)
+- [x] Cannot accept declined/cancelled request (422)
+- [x] User can view own exchange request
+- [x] User cannot view unrelated exchange request (403)
+- [x] Validation: missing receiver_id (422)
+- [x] Validation: teaching_skill_id with wrong owner/type (422)
+- [x] Validation: learning_skill_id with wrong owner/type (422)
+- [x] Request appears in both sender and receiver lists
+- [x] Idempotency: accept an accepted request (422)
+- [x] Idempotency: decline a declined request (422)
+- [x] Idempotency: cancel a cancelled request (422)
+- [x] Idempotency: accept a cancelled request (422)
+- [x] Idempotency: decline a completed request (422)
+- [x] Eligibility: receiver with unverified email (422)
+- [x] Eligibility: receiver with incomplete profile (422)
+- [x] Eligibility: receiver with no skills (422)
+- [x] Ordering: list returns newest-first (`created_at DESC, id DESC`)
+- [x] Pagination: list honors `per_page` default 20, max 50, and `page`
+- [x] Filtering: list filters by `role` (sender/receiver) and `status`
+- [x] Message: whitespace-only message stored as `null`
+- [x] Concurrency: two simultaneous Accepts on the same pending request — exactly one succeeds (200, status → accepted); the other's conditional update matches zero rows and returns 422; the final DB state is consistent (single accepted record)
+- [x] Concurrency: Accept racing Sender Cancel on the same pending request — exactly one transition succeeds; the loser returns 422
+- [x] New request is allowed after a previous request is declined/cancelled/completed
 
 ### Re-confirmation (accepted → edited → pending)
-- [ ] Receiver edits accepted request → status `pending`, `reconfirmation_required_by = 'sender'`
-- [ ] Sender edits accepted request → status `pending`, `reconfirmation_required_by = 'receiver'`
-- [ ] Sender (non-editor) can accept after receiver edit (200, status → accepted, reconfirmation cleared)
-- [ ] Sender (non-editor) can decline after receiver edit (200, status → declined)
-- [ ] Receiver (editor) cannot accept their own edit (403)
-- [ ] Receiver (editor) cannot decline their own edit (403)
-- [ ] Sender can edit a `pending` request (reconfirmation_required_by → `'receiver'`)
-- [ ] Receiver cannot edit a `pending` request (422)
-- [ ] Editing does not require both skills — at least one must remain (422 when both cleared)
+- [x] Receiver edits accepted request → status `pending`, `reconfirmation_required_by = 'sender'`
+- [x] Sender edits accepted request → status `pending`, `reconfirmation_required_by = 'receiver'`
+- [x] Sender (non-editor) can accept after receiver edit (200, status → accepted, reconfirmation cleared)
+- [x] Sender (non-editor) can decline after receiver edit (200, status → declined)
+- [x] Receiver (editor) cannot accept their own edit (403)
+- [x] Receiver (editor) cannot decline their own edit (403)
+- [x] Sender can edit a `pending` request (reconfirmation_required_by → `'receiver'`)
+- [x] Receiver cannot edit a `pending` request (422)
+- [x] Editing does not require both skills — at least one must remain (422 when both cleared)
+
+### Edit History (accepted → edited audit trail)
+- [x] Editing an `accepted` request records one `exchange_request_history` row (before teaching/learning skills, message, status + `edited_by`)
+- [x] Editing a `pending` request does NOT record history
+- [x] `show` returns `history: []` when none, and returns recorded history after an accepted edit
 
 ### Frontend
-- [ ] Initial render
-- [ ] Loading state
-- [ ] Empty received state
-- [ ] Empty sent state
-- [ ] Error state
-- [ ] Tabs interaction (Received / Sent)
-- [ ] Accept interaction
-- [ ] Decline interaction
-- [ ] Cancel interaction
-- [ ] Send request interaction (including one-way)
-- [ ] Edit request interaction (sender and receiver, including clearing "teach in return" with a None option)
-- [ ] Pending count badge
-- [ ] Responsive layout
-- [ ] Dark mode
+- [x] Initial render
+- [x] Loading state
+- [x] Empty received state
+- [x] Empty sent state
+- [x] Error state
+- [x] Tabs interaction (Received / Sent)
+- [x] Accept interaction
+- [x] Decline interaction
+- [x] Cancel interaction
+- [x] Send request interaction (pure-learning and with a teaching offer)
+- [x] Edit request interaction (sender and receiver, including clearing "teach in return" with a None option and locked other-party skills)
+- [x] History modal (Details button shown only when `history.length > 0`)
+- [x] Pending count badge
+- [x] Responsive layout
+- [x] Dark mode
 
 ### Stage 4 Completion Criteria
 Stage 4 is complete when:
 
-- [ ] All backend test cases pass
-- [ ] All frontend test cases pass (manual verification — no test framework installed)
-- [ ] No regressions in existing test suites
-- [ ] Integration between frontend and backend verified
-- [ ] All issues found during testing are resolved
-- [ ] Documentation is synchronized
+- [x] All backend test cases pass (Exchange Request suite 87/87; full suite 282 pass, 4 pre-existing unrelated storage failures, 1 unrelated Discover skip)
+- [x] All frontend test cases pass (manual verification — no test framework installed)
+- [x] No regressions in existing test suites
+- [x] Integration between frontend and backend verified (Vite/TypeScript build passes clean)
+- [x] All issues found during testing are resolved (see Phase 7.3 — Bug Fixes)
+- [x] Documentation is synchronized
 
 Next stage (Stage 5) must not begin until all items above are satisfied.
 
@@ -1931,11 +1943,11 @@ Stage 5 must not:
 ### Stage 5 Completion Criteria
 Stage 5 is complete when:
 
-- [ ] `API.md` is updated with final contract
-- [ ] `FEATURES.md` is updated with final behavior
-- [ ] `UI.md` is updated with final UI description
-- [ ] `ROADMAP.md` has all Stage 1-5 items marked complete
-- [ ] No documentation inconsistencies exist between files
+- [x] `API.md` is updated with final contract (same-direction same-skill duplicate guard, `history` field, edit-history capture note)
+- [x] `FEATURES.md` is updated with final behavior (duplicate-rule refinement + Modification History)
+- [x] `UI.md` is updated with final UI description (send/edit modal semantics, locked other-party skills, ExchangeRequestHistoryModal)
+- [x] `ROADMAP.md` has all Stage 1-5 items marked complete
+- [x] No documentation inconsistencies exist between files
 
 ### Phase 7.1 — Request Semantics & Duplicate Rule Refinement
 **Decisions applied to the create/edit flow (see FEATURES.MD → Exchange Requests):**
@@ -1989,12 +2001,12 @@ Stage 5 is complete when:
 - [x] SKILLS test — creating a skill with `featured: null` defaults to `false`
 Phase 7 is fully complete only when Stages 1-5 are all complete:
 
-- [ ] Stage 1 — Frontend UI complete
-- [ ] Stage 2 — Backend API complete
-- [ ] Stage 3 — Frontend Integration complete
-- [ ] Stage 4 — Testing & Hardening complete
-- [ ] Stage 5 — Documentation Synchronization complete
-- [ ] No known regressions remain
+- [x] Stage 1 — Frontend UI complete
+- [x] Stage 2 — Backend API complete
+- [x] Stage 3 — Frontend Integration complete
+- [x] Stage 4 — Testing & Hardening complete
+- [x] Stage 5 — Documentation Synchronization complete
+- [x] No known regressions remain
 
 ---
 ## Phase 8 — Messaging
@@ -2003,16 +2015,524 @@ Status: Pending
 ### Goal
 Provide matched users with private one-to-one messaging.
 
+### Overview
+After an exchange request is accepted, a `Conversation` is created and the two participants can exchange text messages. Messages are stored in the `messages` table with `read_at` for read tracking. Messaging is polling/refetch-based — **no WebSockets in the MVP** — consistent with Phase 7 (no real-time notifications). The `Conversation` and `Message` models, migrations, and factories already exist (Phase 2 database work). All service, controller, validation, resource, and frontend layers remain to be implemented.
+
+**Conversation creation:** a conversation is created when an exchange request transitions to `accepted`. The Phase 7 `ExchangeRequestService::accept()` path is extended in Phase 8 Stage 2 to create the `Conversation` atomically with the transition — a cross-phase touchpoint into the Phase 7 service layer. Conversations exist only after acceptance. A conversation exists immediately upon acceptance, even with zero messages — empty conversations are valid and appear in the list.
+
+**Canonical rules (normative summary — detailed in Stage 2 Business Rules):**
+
+- **Conversation ordering:** conversations are ordered by `updated_at DESC` (most recent activity). Sending a new message updates the conversation's `updated_at`, which drives ordering.
+- **Message ordering:** messages are ordered by `created_at ASC, id ASC` (oldest → newest). `created_at` is the ONLY chronological ordering field; `id` exists ONLY as a deterministic tie-breaker when `created_at` values are identical — it must never be used as the primary chronological ordering mechanism.
+- **Read tracking:** retrieving a conversation's message list marks EVERY unread incoming message in the conversation as read (`read_at`) — the entire conversation, not only the messages on the current page. Messages sent by the authenticated user are never marked read by this action; the action is a no-op when there are no unread incoming messages.
+- **Unread badge:** the sidebar unread count is the sum of every conversation's `unread_count` — derived from the existing conversations query. No dedicated unread-count endpoint exists.
+
+### Messaging Architecture Principles (single source of truth)
+
+The following invariants govern the Phase 8 Messaging architecture. All current and future Messaging work MUST conform to these principles. Detailed rules live in Stage 2 Business Rules, `FEATURES.MD` → Messaging, and `API.MD` → Conversations/Messages.
+
+1. **Exactly two immutable participants** — every conversation has exactly two participants, derived from the accepted Exchange Request (sender + receiver). Participants are immutable; no additional participants may join; no group conversations exist in Phase 8.
+2. **Created on acceptance** — a conversation exists only after the Exchange Request transitions to `accepted`, created atomically within the same DB transaction as the transition. No conversation exists before acceptance.
+3. **Empty conversations are valid** — a conversation with zero messages is a valid state; it is listed and can be opened.
+4. **Always active and immutable** — Phase 8 conversations are always active and their shape (participants, linked exchange request) is immutable after creation. Archive, lock, and closed states are future concepts and must NOT be implemented in Phase 8.
+5. **Ordering depends only on latest activity** — conversation ordering depends solely on `updated_at DESC` (most recent activity); no other signal influences it. Messages use `created_at ASC, id ASC`, with `created_at` as the ONLY chronological field and `id ASC` purely as the deterministic tie-breaker.
+6. **Metadata and threads have separate responsibilities** — `ConversationResource` (conversation metadata) and `MessageResource` (message data) are independent; neither exposes the other's data. The list endpoint returns summaries, never full threads.
+7. **Read tracking is retrieval-scoped** — reading marks every unread incoming message in the conversation upon message-list retrieval; the user's own messages are never marked by it.
+8. **Polling is the transport** — messaging is polling/refetch-based; WebSockets are explicitly out of scope for Phase 8.
+9. **Transport must not affect business rules** — delivery/read semantics are business rules; the transport mechanism (HTTP polling now, WebSockets in a future phase) must never change them.
+10. **No partial state** — transaction boundaries guarantee that exchange acceptance and conversation creation succeed or fail together; a failed message write has no side effects (ordering, unread counts, and conversation metadata remain unaffected).
+
+### API Evolution Policy (architectural philosophy)
+
+This is **not** an API versioning strategy. It documents how the Phase 8 Messaging API contract is intended to evolve so future phases remain consistent with this foundation:
+
+- Existing endpoints must remain **backward compatible** whenever possible.
+- Future messaging capabilities should **extend existing resources** (add optional fields, endpoints, or query parameters) instead of replacing them whenever practical.
+- Additional optional fields, endpoints, or query parameters may be introduced **without changing existing behavior**.
+- Existing response fields must **never change meaning**.
+- Existing business rules remain the **source of truth regardless of the transport layer** (polling today, WebSockets in a future phase). Transport changes must never alter ordering, read, ownership, or failure semantics.
+
+**Authentication**
+Messaging requires authentication. Listing conversations, viewing messages, and sending all require an authenticated user, and only the two participants (the accepted request's sender/receiver) may access the conversation.
+
+**Dependencies**
+- Phase 7 — Exchange Requests (conversation created on acceptance; participants are the request's sender/receiver)
+- Phase 9 — Learning Sessions (sessions scheduled after messaging)
+- Phase 5 — Skills / Phase 6 — Discover (indirect, through Phase 7)
+
+**Existing Placeholders**
+- Sidebar link "Messages" (`/messages`) in AuthenticatedLayout — no route registered yet
+- `Conversation` / `Message` models, migrations, and factories (Phase 2)
+- `ExchangeRequest::conversation()` HasOne relationship (Phase 2 model)
+- Documented endpoints in `API.MD` (`/conversations`, `/conversations/{id}`, `/conversations/{id}/messages`) and `UI.MD` (Conversations / Messages components)
+
+> **Naming note:** the sidebar labels the page "Messages" at `/messages`, while `UI.MD`/`API.MD` refer to "Conversations" and `/conversations` endpoints. Stage 5 must reconcile this naming consistently across docs.
+
+---
+
+# Stage 1 — Frontend (UI Foundation)
+### Goal
+Build the complete Messaging interface with all visual UI states before integrating with the backend.
+
+### Dependencies
+- None. Stage 1 is the first implementation stage and builds UI independently.
+- References existing Phase 5/6/7 component and type conventions but does not depend on any Messaging backend.
+- Stage 1 must not wait for or assume any backend endpoint exists.
+
+### Types
+- [x] Create `Conversation` interface (id, exchange_request_id, other_user, last_message, unread_count, updated_at)
+- [x] Create `Message` interface (id, conversation_id, sender_id, sender, body, read_at, created_at)
+- [x] Create `SendMessageData` interface (body)
+
+### Boundaries
+Stage 1 is strictly limited to frontend foundation. It must NOT include:
+
+- API requests or API client modules (e.g. `lib/api/conversations.ts`)
+- React Query hooks or data fetching logic
+- Backend integration of any kind
+- Mock data, fake API responses, temporary API simulation, or hardcoded datasets — **exception:** isolated placeholder fixtures (see below)
+- Business logic (participant checks, read tracking, conversation creation)
+- Temporary workarounds that simulate backend behavior
+
+All of the above belong to Stage 3 (Frontend Integration) or Stage 2 (Backend API).
+
+**Placeholder fixtures:** Stage 1 requires visual loaded states before any backend exists. To satisfy this, isolated placeholder fixtures are permitted and used only as default prop values to render the visual states. They are temporary, are NOT coupled to component logic, do not simulate backend behavior, and are fully replaced by real API integration in Stage 3.
+
+### Pages & Components
+- [x] Create `MessagesPage` (conversation list + chat window, two-pane on desktop / stacked on mobile)
+- [x] Create `ConversationList` (avatar, name, last message, unread badge, active selection)
+- [x] Create `ChatWindow` (message thread, message bubbles, input, send button)
+
+### Routing
+- [x] Lazy import + register `/messages` under `AuthenticatedLayout` in App.tsx
+- [x] Sidebar link already exists (`/messages`) — verify it maps to the route
+
+### User Interface
+- [x] Conversation list with avatar/name/last message
+- [x] Unread count badge (per conversation AND on the sidebar Messages link — the sidebar badge is the SUM of every conversation's `unread_count`, rendered visually from the placeholder fixtures via `useUnreadConversationCount`; the hook's internals are swapped for the React Query aggregate count in Stage 3 without modifying the layout, matching the Phase 7 `usePendingExchangeRequestCount` precedent)
+- [x] Chat window with own vs other message bubbles
+- [x] Message input + send button (disabled while empty)
+- [x] "No conversations yet" empty state
+- [x] "Select a conversation" empty thread state (desktop two-pane)
+- [x] Empty conversation thread state — conversation with zero messages shows an empty thread area with the input enabled
+- [x] Auto-scroll to the newest message on (a) initial conversation open and (b) immediately after the authenticated user successfully sends a message — NOT on polling/refetch
+- [x] Loading skeleton
+- [x] Error state with retry button
+- [x] Responsive layout (mobile: list/thread toggled; tablet; desktop: two-pane)
+
+### States
+- [x] Loading skeleton
+- [x] Empty (no conversations): "When you accept an exchange request, a conversation is created here."
+- [x] Empty (no thread selected)
+- [x] Empty conversation thread (zero messages — valid state; input enabled)
+- [x] Error state with retry button
+- [x] Loaded state with conversation list + thread
+
+### Theme
+- [x] Dark mode support
+
+### Responsive Layout
+- [x] Mobile
+- [x] Tablet
+- [x] Desktop
+
+### Stage 1 Completion Criteria
+Stage 1 is complete when:
+
+- [x] `MessagesPage` with all UI states (loading, empty, error, loaded)
+- [x] Responsive layout (mobile, tablet, desktop)
+- [x] Reusable components (`ConversationList`, `ChatWindow`)
+- [x] Route registered at `/messages` matching the sidebar link
+- [x] Dark mode support
+
+Stage 1 explicitly does NOT include:
+
+- No backend implementation
+- No API requests
+- No React Query or data fetching hooks
+- No mock data or fake API simulation (isolated placeholder fixtures are permitted — see Boundaries above)
+- No business logic (participant checks, read tracking)
+- No temporary workarounds that simulate backend behavior
+
+---
+
+# Stage 2 — Backend API
+### Goal
+Implement the Conversation/Message API with participant-only ownership, read tracking, and conversation-creation-on-acceptance.
+
+### Dependencies
+- Stage 1 completed — UI component structure and type definitions are available for reference.
+- Phase 2 database — `conversations` and `messages` tables already exist.
+- Phase 7 completed — `ExchangeRequestService::accept()` exists and is the extension point for conversation creation.
+
+### Expected outputs
+- Conversation created on acceptance (extend `ExchangeRequestService::accept()`)
+- `GET /api/v1/conversations` endpoint — list user's conversations
+- `GET /api/v1/conversations/{id}` endpoint — view a single conversation
+- `GET /api/v1/conversations/{id}/messages` endpoint — list messages
+- `POST /api/v1/conversations/{id}/messages` endpoint — send a message
+- `StoreMessageRequest` form request with validation
+- `ConversationService` with conversation/message logic and read tracking
+- `ConversationResource` and `MessageResource`
+- Backend tests passing for auth, ownership, validation, and read-tracking scenarios
+- API.md updated with endpoint documentation
+- API contract finalized and stable — no breaking changes after this stage
+
+### Boundaries
+Stage 2 must not modify:
+- Existing UI components, layouts, or pages
+- Frontend code of any kind (tsx, css, component state)
+- Client-side routing
+- Existing database tables (new migrations only if strictly required — the Phase 2 schema is expected to suffice)
+- Existing models, controllers, or services from other phases **except** the `ExchangeRequestService::accept()` extension point noted above (the single cross-phase touchpoint, implemented atomically in the existing transaction)
+
+### Database (already exists — Phase 2)
+- [x] `conversations` table — id, exchange_request_id (FK, unique, cascade delete), index on exchange_request_id
+- [x] `messages` table — id, conversation_id (FK, cascade delete), sender_id (FK users, cascade delete), body (text), read_at (timestamp nullable), indexes on conversation_id and sender_id
+
+### Model (already exists — Phase 2)
+- [x] `Conversation` model — fillable (exchange_request_id), `exchangeRequest()`, `messages()`
+- [x] `Message` model — fillable (conversation_id, sender_id, body, read_at), `read_at` datetime cast, `conversation()`, `sender()`
+- [x] `ExchangeRequest::conversation()` HasOne relationship
+- [x] `ConversationFactory` / `MessageFactory`
+
+### Controller & Routes
+- [ ] Create `ConversationController`
+- [ ] Register `GET /api/v1/conversations`
+- [ ] Register `GET /api/v1/conversations/{conversation}`
+- [ ] Register `GET /api/v1/conversations/{conversation}/messages`
+- [ ] Register `POST /api/v1/conversations/{conversation}/messages`
+
+### Endpoint Responsibilities (canonical)
+The three conversation endpoints have distinct, non-overlapping responsibilities:
+
+- **`GET /api/v1/conversations`** — conversation-list snapshot for the list pane and the unread badge. Returns a paginated collection of `ConversationResource` rows, each with `other_user`, `last_message`, `unread_count`, `updated_at`. Call when the Messages page (or its unread badge) loads or refetches. It does NOT return the message thread.
+- **`GET /api/v1/conversations/{id}`** — metadata for a single selected conversation (the conversation header/detail: participants, `exchange_request_id`, `updated_at`). Call when a conversation is selected to render the header. It does NOT return the message thread.
+- **`GET /api/v1/conversations/{id}/messages`** — the message thread for the chat window. Returns a paginated list of `MessageResource` in ascending order (`created_at ASC, id ASC`). Call when a conversation is opened and on every thread refetch/poll.
+
+**Why both `/{id}` and `/{id}/messages` exist:** the single-conversation endpoint supplies full conversation metadata (header) independent of thread pagination; the messages endpoint supplies the thread content in ascending order. The list endpoint is a compact summary for the pane — it must not be used to render a full thread, and `/{id}` must not be used to page through messages. Each endpoint is the single source of truth for its pane.
+
+### Form Request
+- [ ] Create `StoreMessageRequest`
+      Validation:
+- [ ] `body`: required, string, max:2000 — trimmed of leading/trailing whitespace; whitespace-only body rejected (422)
+
+### Service
+- [ ] Create `ConversationService`
+      Responsibilities:
+- [ ] Conversation created on acceptance — extend `ExchangeRequestService::accept()` to create the `Conversation` in the same DB transaction (cross-phase touchpoint; single row guaranteed by the unique `exchange_request_id` constraint). The conversation is created immediately upon acceptance, even with zero messages — empty conversations are valid.
+- [ ] List conversations where the user is a participant (ordered by `updated_at DESC` — most recent activity; a sent message updates the conversation's `updated_at`)
+- [ ] List pagination — `page` default 1, `per_page` default 20, max 50 (matches Discover/Exchange contract)
+- [ ] View conversation — participant-only
+- [ ] List messages — ascending (`created_at ASC, id ASC`), paginated (default 20, max 50)
+- [ ] Send message — participant-only; message stored with `sender_id = auth user`, `read_at = null`; the message creation also updates the conversation's `updated_at` (drives ordering)
+- [ ] Read tracking — after a participant successfully retrieves the message list via `GET /api/v1/conversations/{id}/messages`, mark as read (`read_at = now()`) every message in that conversation where `sender_id != auth user` AND `read_at IS NULL`. Never marks the authenticated user's own messages. No-op when there are no unread incoming messages.
+- [ ] Unread count — derived from messages where `read_at IS NULL` and sender is the other participant
+- [ ] Empty conversation — opening a zero-message conversation is allowed; the message list returns an empty collection; read tracking performs no action
+
+### Business Rules
+The canonical rules live in FEATURES.MD → Messaging (Phase 8). This checklist tracks their implementation:
+
+- [ ] **Conversation lifecycle:** created on acceptance (atomically with the accept transition, even with zero messages); always active; persists for the lifetime of the exchange — it is not deleted when the request is cancelled. Deleting the exchange request cascades and deletes the conversation and its messages (FK cascade). A deleted participant account cascades their messages (FK cascade); the conversation and the other participant's messages are preserved. Conversations cannot be archived, locked, or closed in Phase 8 — those states are reserved for future phases.
+- [ ] **Conversation state (canonical):** Phase 8 conversations are always active and immutable after creation. `archived`, `locked`, and `closed` are future-phase concepts and must NOT be implemented in Phase 8.
+- [ ] **Participants (canonical):** every conversation has exactly two participants, derived from the accepted Exchange Request (sender + receiver). Participants are immutable; no additional participants may join; no group conversations exist in Phase 8.
+- [ ] Only the exchange request's participants (sender/receiver) can access the conversation; all others return 403
+- [ ] No messaging before acceptance (no conversation exists)
+- [ ] Message body — required, max 2000, trimmed non-empty
+- [ ] **Message lifecycle (canonical):** a Phase 8 message supports exactly two states — `sent` (created) and `read` (`read_at` set). Editing, deleting, delivery status, reactions, attachments, and typing indicators are future extensions and are intentionally excluded; no fields or endpoints for them in Phase 8.
+- [ ] **Conversation ordering (canonical):** conversations ordered by `updated_at DESC` (most recent activity). `updated_at` is the SOLE ordering mechanism; sending a new message updates the conversation's `updated_at`, which drives ordering. There is no other conversation-ordering rule.
+- [ ] **Message ordering (canonical):** messages ordered by `created_at ASC, id ASC` (oldest → newest). `created_at` is the ONLY chronological ordering field — `id` exists ONLY as a deterministic tie-breaker when `created_at` values are identical and must never be used as the primary chronological ordering mechanism. No implementation may apply its own sort, and any future implementation must preserve this contract regardless of the storage mechanism.
+- [ ] **Read tracking (canonical):** retrieving a conversation's message list (`GET /api/v1/conversations/{id}/messages`) marks EVERY unread incoming message in the conversation as read — the entire conversation, not only the messages returned on the current page. It never marks messages sent by the authenticated user. No-op when there are no unread incoming messages. Reading is triggered only by a successful message-list retrieval — not by listing conversations and not by sending.
+- [ ] **Empty conversation:** empty conversations (zero messages) are valid, appear in the list, and can be opened; read tracking is a no-op for them
+- [ ] **Unread badge:** the sidebar unread count is the SUM of every conversation's `unread_count` from `GET /api/v1/conversations` — no dedicated unread-count endpoint exists
+- [ ] **Pagination strategy:** conversations and messages use offset-based pagination (`page`, `per_page` — default 20, max 50). No infinite-scroll contract is defined by the API (the frontend may paginate on demand). Cursor-based pagination is intentionally deferred to a future phase and must NOT be added in Phase 8.
+- [ ] **Transaction boundary:** Exchange Request acceptance and Conversation creation must succeed or fail together within a single DB transaction — no partial state may exist.
+- [ ] **Failure behavior:** a failed message write (validation or DB error) must not update conversation ordering (`updated_at`), must not affect unread counts, and must not modify conversation metadata.
+- [ ] No real-time push — polling/refetch only (WebSockets out of scope for MVP); the transport must never alter the read/ordering business rules above
+- [ ] Notifications — none sent in Phase 8 (consistent with Phase 7)
+
+### Resource
+- [ ] Create `ConversationResource`
+      Include:
+- [ ] id
+- [ ] exchange_request_id
+- [ ] other_user (UserResource)
+- [ ] last_message (MessageResource, nullable)
+- [ ] unread_count
+- [ ] updated_at
+- [ ] Create `MessageResource`
+      Include:
+- [ ] id
+- [ ] conversation_id
+- [ ] sender_id
+- [ ] sender (UserResource)
+- [ ] body
+- [ ] read_at (nullable)
+- [ ] created_at
+      Responsibilities:
+- [ ] **Resource responsibilities (canonical):** `ConversationResource` represents conversation metadata ONLY (participants, `last_message` summary, `unread_count`, `updated_at`); `MessageResource` represents message data ONLY. Neither resource becomes responsible for the other's full data — `ConversationResource` never embeds a message thread, and `MessageResource` never embeds participant metadata beyond its sender.
+
+### Authorization
+- [ ] Controller-level participant checks (no formal Policy — consistent with Phase 5/7 pattern)
+- [ ] Participant scoping on show, list messages, send
+
+### Query Design
+- [ ] Eager load other participant's profile, last message sender, message senders
+- [ ] Prevent N+1 queries
+
+### Stage 2 Completion Criteria
+Stage 2 is complete when:
+
+- [ ] `ConversationController` created with all 4 endpoints
+- [ ] `StoreMessageRequest` validates all fields
+- [ ] `ConversationService` implements participant ownership, conversation-creation-on-acceptance, read tracking, and ordering rules
+- [ ] `ConversationResource` / `MessageResource` return the documented fields
+- [ ] Ownership enforced (unauthorized actor returns 403)
+- [ ] Conversation created immediately on acceptance — empty conversations valid and listed
+- [ ] List ordering follows the canonical contract (conversations `updated_at DESC`; messages `created_at ASC, id ASC`)
+- [ ] Read tracking fires only on message-list retrieval, for unread incoming messages only
+- [ ] List pagination (`page`, `per_page` — default 20, max 50) implemented
+- [ ] Conversation creation on accept runs in the same DB transaction as the transition
+- [ ] API.md updated with endpoint documentation
+- [ ] All backend tests pass
+- [ ] API contract is finalized and stable
+
+Next stage (Stage 3) must not begin until all items above are satisfied.
+
+---
+
+# Stage 3 — Frontend Integration
+### Goal
+Replace visual-only UI states with real API integration.
+
+### Dependencies
+- Stage 1 completed — UI components, layout, and visual states exist.
+- Stage 2 completed — Backend API is deployed, tested, and contract is finalized.
+
+### Expected outputs
+- API client functions in `lib/api/conversations.ts`
+- React Query hooks with query and mutations
+- `MessagesPage` loads real conversation data
+- `ChatWindow` loads and sends real messages
+- Loading, empty, and error states driven by real API responses
+- No mock data, no fake API, no temporary workarounds
+
+### Integration Contract
+Stage 3 consumes the backend API contract from Stage 2 as-is:
+- Endpoints: `GET /api/v1/conversations`, `GET /api/v1/conversations/{id}`, `GET /api/v1/conversations/{id}/messages`, `POST /api/v1/conversations/{id}/messages`
+- Send body: `{ body }`
+- Response shape: `{ success, message, data: { ... } }`
+
+Stage 3 must not redesign the API contract. If the contract is insufficient, the issue must be resolved by updating Stage 2 documentation and re-implementing Stage 2, not by working around it in frontend code.
+
+### Boundaries
+Stage 3 must not modify:
+- Backend controllers, services, resources, or form requests
+- Database schema or queries
+- Participant ownership or read-tracking rules
+- API response structure or validation rules
+- Any PHP or backend code
+
+### API
+- [ ] Create `listConversations(params?)`
+- [ ] Create `getConversation(id)`
+- [ ] Create `getMessages(conversationId, params?)`
+- [ ] Create `sendMessage(conversationId, body)`
+
+### Hooks
+- [ ] Create `useConversations()` (query, staleTime 30s, queryKey `["conversations"]`, `keepPreviousData`)
+- [ ] Create `useConversation(id)` (single-conversation metadata query, disabled when `id` is null)
+- [ ] Create `useMessages(conversationId)` (query, polling — see Polling Contract below; MUST NOT auto-scroll on refetch)
+- [ ] Create `useSendMessage()` (mutation, invalidates `["conversations"]` and `["messages"]`)
+- [ ] Create `useUnreadConversationCount()` (sidebar badge — DERIVED: sums every conversation's `unread_count` from the existing `useConversations()` query data; performs NO additional API request; no dedicated endpoint exists)
+
+### Schemas
+- [ ] Create `sendMessageSchema` (Zod: body required, max 2000, trimmed — matches backend; whitespace-only never sent)
+
+### Polling Contract (canonical)
+- [ ] Active conversation thread polls every ~5 seconds via `refetchInterval`; **window focus refetch** is enabled (`refetchOnWindowFocus`) so returning to the tab refreshes immediately
+- [ ] **Background polling** continues for the active conversation while the tab is unfocused (React Query's default `refetchIntervalInBackground: false` — the thread refreshes on focus instead); this is a performance decision, not a correctness one
+- [ ] After a successful send, the thread refetches (via cache invalidation) rather than continuing the existing poll cycle; the poll interval resets normally
+- [ ] **Temporary network interruption** — a failed poll leaves the last cached thread in place, keeps the user's scroll position, and shows a non-blocking "reconnecting" indicator; the next successful poll recovers automatically; messages are never lost or re-ordered client-side
+- [ ] Polling must never change read/ordering business rules — it is transport only
+
+### Integration
+- [ ] Replace visual-only UI with real API data (placeholder fixtures removed)
+- [ ] Connect `MessagesPage` conversation list
+- [ ] Connect unread count badge (per conversation from `unread_count`; sidebar badge = SUM across conversations)
+- [ ] Connect `ChatWindow` thread load (oldest → newest) with auto-scroll to bottom
+- [ ] Auto-scroll triggers — (a) when a conversation is initially opened and (b) immediately after the authenticated user successfully sends a message; polling/refetches MUST NOT auto-scroll (preserve reading position)
+- [ ] Connect send message (append via API + cache invalidation)
+- [ ] Connect read-tracking refresh (unread clears after viewing the conversation — driven by the message-list retrieval, which marks the WHOLE conversation read)
+- [ ] Connect empty conversation thread (zero messages — valid state, input enabled)
+- [ ] Connect loading state
+- [ ] Connect empty states (no conversations / no thread selected)
+- [ ] Connect error state with retry
+
+### Cache Invalidation
+- [ ] Every successful message send invalidates `["conversations"]` AND `["messages"]`
+- [ ] Unread count updates immediately after viewing/sending (no manual refresh) — derived from the invalidated conversations query, no extra request
+
+### Cache Ownership (canonical)
+- [ ] **Conversation summaries** are owned by the `["conversations"]` query (list metadata: participants, `last_message`, `unread_count`, `updated_at`)
+- [ ] **Message threads** are owned exclusively by the `["messages"]` query (per-conversation thread data)
+- [ ] **Unread counts** are owned by the conversations query — `unread_count` lives on `ConversationResource` and the sidebar badge derives from it; there is no standalone unread cache
+- [ ] **No duplication:** message thread data must never be embedded inside conversation cache entries. `last_message` in the conversations cache is a summary only; the `["messages"]` cache is the single source of truth for the thread.
+
+### Stage 3 Completion Criteria
+Stage 3 is complete when:
+
+- [ ] API client functions exist and are used
+- [ ] React Query hooks integrate with the API
+- [ ] `MessagesPage` renders real conversation data
+- [ ] Unread badges reflect real data
+- [ ] `ChatWindow` loads and sends real messages
+- [ ] Mutations invalidate `["conversations"]` and `["messages"]`
+- [ ] Auto-scroll occurs on initial open and after own send only — never on polling/refetch
+- [ ] Empty conversations (zero messages) render as a valid thread with the input enabled
+- [ ] Sidebar unread badge is derived from the conversations query (no additional request)
+- [ ] Polling contract honored (interval, focus refetch, send-refetch, network-interruption recovery)
+- [ ] Cache ownership honored (no thread data duplicated into conversation summaries)
+- [ ] Loading, empty, and error states are API-driven
+- [ ] No mock data, no fake API, no temporary workarounds remain in the codebase
+- [ ] Vite/TypeScript build passes clean (no messaging-related errors)
+- [ ] ESLint — not configured in project (no messaging-related issues)
+
+Next stage (Stage 4) must not begin until all items above are satisfied.
+
+---
+
+# Stage 4 — Testing & Hardening
+### Goal
+Validate the full Messaging feature through automated tests across backend and frontend, verify integration correctness, and fix any issues found.
+
+### Dependencies
+- Stage 1 completed — UI components exist and are stable.
+- Stage 2 completed — Backend API is deployed, tested, and contract finalized.
+- Stage 3 completed — Frontend is fully integrated with the backend API.
+
+### Expected outputs
+- All backend test scenarios pass (auth, validation, ownership, read tracking)
+- All frontend test scenarios pass (render, interaction, states, responsive, dark mode)
+- Integration verified: frontend consumes backend contract correctly
+- No known regressions in existing functionality (especially Phase 7 accept flow)
+- Documentation synchronized across all files
+- Final review sign-off
+
+### Boundaries
+Stage 4 must not:
+- Introduce new features or behavioral changes
+- Modify backend business logic (participant ownership, read-tracking rules)
+- Modify UI component structure or design
+- Change the API contract
+- Add new API endpoints, query parameters, or response fields
+- Alter database schema
+
 ### Backend
-- [ ] Conversation and message API
+- [ ] Guest cannot list conversations (401)
+- [ ] Guest cannot send messages (401)
+- [ ] Authenticated user can list own conversations
+- [ ] Non-participant cannot view a conversation (403)
+- [ ] Non-participant cannot send a message (403)
+- [ ] Conversation created on acceptance (exactly one row; unique `exchange_request_id`)
+- [ ] No conversation exists before acceptance
+- [ ] Conversation appears in both participants' lists
+- [ ] Empty conversation is valid — created on acceptance with zero messages, appears in the list, and opens with an empty message list
+- [ ] Send message — valid body stored correctly
+- [ ] Send message — empty body (422)
+- [ ] Send message — whitespace-only body (422)
+- [ ] Send message — body exceeding max length (422)
+- [ ] Message body trimmed on store
+- [ ] Sending a message updates the conversation's `updated_at` (drives ordering)
+- [ ] Ordering — conversations by `updated_at DESC` (most recent activity first)
+- [ ] Ordering — messages ascending (`created_at ASC, id ASC`, oldest → newest)
+- [ ] Pagination — conversations honors `per_page` default 20, max 50, and `page`
+- [ ] Pagination — messages honors `per_page` default 20, max 50, and `page`
+- [ ] Read tracking — retrieving the message list marks the recipient's unread incoming messages as read
+- [ ] Read tracking — marks EVERY unread incoming message in the conversation, not only the messages on the current page
+- [ ] Read tracking — the authenticated user's own messages are never marked read by message-list retrieval
+- [ ] Read tracking — no-op when there are no unread incoming messages (including empty conversations)
+- [ ] Unread count — reflects unread messages from the other participant
+- [ ] Concurrency — accepting the same request creates exactly one conversation
+- [ ] Transaction atomicity — if conversation creation fails, the accept transition rolls back (no partial state)
+- [ ] Failure behavior — a rejected/errored message write leaves conversation ordering (`updated_at`), unread counts, and conversation metadata unchanged
+- [ ] Participants — exactly two, immutable, derived from the accepted request; no participant can be added or removed
+- [ ] Lifecycle — deleting the exchange request cascades the conversation and its messages; a deleted participant's account cascades their messages only
+- [ ] No archive/lock/close endpoints or states exist (Phase 8 scope guard)
+- [ ] Regression — Phase 7 accept/decline/cancel tests still pass after the accept-path extension
 
 ### Frontend
-- [ ] Conversation list
-- [ ] Message thread view
+- [ ] Initial render
+- [ ] Loading state
+- [ ] Empty conversations state
+- [ ] Empty thread state (no conversation selected)
+- [ ] Empty conversation thread (zero messages — valid state, input enabled)
+- [ ] Error state
+- [ ] Conversation selection
+- [ ] Send message interaction
+- [ ] Auto-scroll on initial open and after own send — NOT on polling/refetch
+- [ ] Unread badge (sidebar = sum of `unread_count`; no additional request)
+- [ ] Responsive layout
+- [ ] Dark mode
 
-### Documentation
-- [ ] API.md
-- [ ] UI.md
+### Stage 4 Completion Criteria
+Stage 4 is complete when:
+
+- [ ] All backend test cases pass
+- [ ] All frontend test cases pass (manual verification — no test framework installed)
+- [ ] No regressions in existing test suites (especially Phase 7)
+- [ ] Integration between frontend and backend verified
+- [ ] All issues found during testing are resolved
+- [ ] Documentation is synchronized
+
+Next stage (Stage 5) must not begin until all items above are satisfied.
+
+---
+
+# Stage 5 — Documentation Synchronization
+### Goal
+Ensure all documentation accurately reflects the implemented Messaging feature and is consistent across all files.
+
+### Dependencies
+- Stage 4 completed — all testing is done and issues are resolved.
+
+### Expected outputs
+- `API.md` accurately documents the Conversation/Message endpoints with correct request/response examples, endpoint responsibilities, ordering (`updated_at DESC` for conversations, `created_at` as the only message-chronology field), read-tracking trigger and scope, lifecycle, state, participants, pagination strategy, failure behavior, and the API Evolution Policy
+- `FEATURES.md` Messaging section matches implemented behavior (conversation-on-acceptance, empty-conversation validity, canonical ordering, read tracking, unread-badge derivation, polling-only, the Messaging Architecture Principles, and the API Evolution Policy)
+- `UI.md` Messaging section matches the final UI (auto-scroll behavior, polling contract, empty states, unread-badge derivation, cache ownership, and the "Messages" vs "Conversations" naming reconciled with the sidebar)
+- `ROADMAP.md` Stage 1-5 checklists are marked complete
+- All cross-references between documentation files are consistent
+- No stale or contradictory content remains
+
+### Boundaries
+Stage 5 must not:
+- Add new feature descriptions not implemented in Stages 1-4
+- Change documented API contracts beyond what was implemented
+- Introduce new requirements or scope
+- Generate any production code
+
+### Stage 5 Completion Criteria
+Stage 5 is complete when:
+
+- [ ] `API.md` is updated with final contract (endpoint responsibilities, ordering, read-tracking scope, lifecycle, state, participants, pagination strategy, failure behavior)
+- [ ] `FEATURES.md` Messaging section matches implemented behavior (architecture principles, lifecycle, state, message lifecycle, participants, ordering determinism, pagination, polling contract, read-tracking scope, resource responsibilities, cache ownership, transaction boundaries, failure behavior, future compatibility)
+- [ ] `UI.md` Messaging section matches the final UI (auto-scroll behavior, polling contract, empty states, unread-badge derivation, cache ownership, and the "Messages" vs "Conversations" naming reconciled with the sidebar)
+- [ ] `ROADMAP.md` Stage 1-5 checklists are marked complete
+- [ ] One canonical conversation-ordering rule (`updated_at DESC`) appears consistently — no `created_at DESC` conversation ordering anywhere
+- [ ] One canonical read-tracking rule appears consistently (message-list retrieval; EVERY unread incoming message in the conversation)
+- [ ] Message-ordering field responsibility is stated consistently (`created_at` = ONLY chronological field; `id` = tie-breaker only, never primary chronology)
+- [ ] The API Evolution Policy is present and consistent in ROADMAP, FEATURES.MD, and API.MD
+- [ ] Lifecycle, state, participants, transaction-boundary, and failure-behavior rules are stated identically in ROADMAP, FEATURES.MD, and API.MD
+- [ ] No documentation inconsistencies exist between files
+
+Phase 8 is fully complete only when Stages 1-5 are all complete:
+
+- [ ] Stage 1 — Frontend UI complete
+- [ ] Stage 2 — Backend API complete
+- [ ] Stage 3 — Frontend Integration complete
+- [ ] Stage 4 — Testing & Hardening complete
+- [ ] Stage 5 — Documentation Synchronization complete
+- [ ] No known regressions remain
 
 ---
 ## Phase 9 — Learning Sessions

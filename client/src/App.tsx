@@ -24,6 +24,9 @@ const DiscoverPage = lazy(() => import("@/features/discover/pages/DiscoverPage")
 const ExchangeRequestsPage = lazy(
   () => import("@/features/exchange-request/pages/ExchangeRequestsPage"),
 )
+const MessagesPage = lazy(
+  () => import("@/features/messaging/pages/MessagesPage"),
+)
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((state) => state.initialize)
@@ -97,6 +100,7 @@ function App() {
                       path="exchange-requests"
                       element={<ExchangeRequestsPage />}
                     />
+                    <Route path="messages" element={<MessagesPage />} />
                   </Route>
                 </Route>
               </Routes>
