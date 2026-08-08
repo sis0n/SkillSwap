@@ -752,6 +752,26 @@ View conversations.
 
 GET /api/v1/conversations
 
+### Behavior
+
+- The conversation list is ordered by `updated_at DESC` (most recent activity first) — conversations with the latest message activity appear at the top. Sending a message moves the conversation to the top.
+- Empty conversations (created on acceptance, zero messages) appear in the list and are selectable; they show a last-message placeholder of "No messages yet."
+- Loading skeleton, error state with retry, and a "When you accept an exchange request, a conversation is created here." empty state.
+
+### Pagination
+
+- The conversation list uses offset-based pagination from the API (`page`, `per_page`). The frontend loads more on demand; there is no fixed infinite-scroll contract.
+
+### Unread Badge
+
+- Each conversation row shows its `unread_count`.
+- The sidebar Messages badge is the SUM of every conversation's `unread_count`, derived from the conversations query — no extra API request.
+
+### Cache Ownership
+
+- Conversation summaries live in the `["conversations"]` cache; message threads live exclusively in the `["messages"]` cache.
+- `last_message` in a conversation row is a summary only — the thread is never duplicated into the conversation cache. The `["messages"]` cache is the single source of truth for thread content.
+
 ---
 
 ## Messages
@@ -771,6 +791,23 @@ Communicate with matched users.
 GET /api/v1/conversations/{id}/messages
 
 POST /api/v1/conversations/{id}/messages
+
+### Behavior
+
+- Thread renders oldest → newest, auto-scrolling to the newest message on (a) initial conversation open and (b) immediately after the authenticated user successfully sends a message.
+- Polling/refetch must NOT auto-scroll — the user's reading position is preserved.
+- Empty conversation thread (zero messages) is a valid state: shows the empty thread area with the message input enabled.
+- Message input + send button are disabled while the input is empty.
+- "Select a conversation" state when no thread is selected (desktop two-pane).
+- Incoming unread messages appear as unread until the message list is retrieved (read tracking), which marks EVERY unread incoming message in the conversation as read — not only those visible on the current page. The authenticated user's own messages are always read.
+- Loading skeleton, error state with retry.
+
+### Polling Contract
+
+- The active conversation's thread polls every **~5 seconds** and **refetches on window focus**.
+- After a successful send, the thread refetches (cache invalidation) and the poll interval resets normally.
+- On a temporary network interruption, the last cached thread stays visible, scroll position is preserved, and a non-blocking "reconnecting" indicator may appear; the next successful poll recovers automatically. Messages are never lost or re-ordered client-side.
+- Polling is transport only — it never alters read or ordering behavior.
 
 ---
 

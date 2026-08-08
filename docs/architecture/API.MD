@@ -2049,7 +2049,56 @@ Phase 7 sends no notifications (email, push, or in-app). New requests are visibl
 | GET    | /conversations      |
 | GET    | /conversations/{id} |
 
-Only available after an exchange request is accepted.
+Only available after an exchange request is accepted. A conversation is created immediately upon acceptance — empty conversations (zero messages) are valid, appear in the list, and can be opened.
+
+### Lifecycle & State
+
+- A conversation is created when the exchange request transitions to `accepted`, atomically within the same DB transaction as the transition (no partial state — acceptance and conversation creation succeed or fail together).
+- Conversations are **always active** and immutable after creation. Their participants and linked exchange request cannot change.
+- A conversation persists for the lifetime of the exchange; it is not deleted when the request is cancelled.
+- Deleting the exchange request cascades the conversation and its messages. Deleting a participant account cascades their messages only; the conversation and the other participant's messages are preserved.
+- `archived`, `locked`, and `closed` are future-phase states and are NOT part of Phase 8.
+
+### Participants
+
+- Every conversation has **exactly two participants**, derived from the accepted Exchange Request (sender + receiver). Participants are immutable; no additional participants may join; no group conversations exist in Phase 8.
+- Only participants may access the conversation; all other users receive 403.
+
+### Endpoint Responsibilities
+
+- **`GET /conversations`** — conversation-list snapshot for the list pane and the unread badge. Returns a paginated collection of `ConversationResource` rows, each with `other_user`, `last_message`, `unread_count`, `updated_at`. Does NOT return the message thread.
+- **`GET /conversations/{id}`** — metadata for a single selected conversation (participants, `exchange_request_id`, `updated_at`). Call when a conversation is selected to render the header. Does NOT return the message thread.
+- **`GET /conversations/{id}/messages`** — the message thread for the chat window (see Messages below).
+
+### Ordering (canonical)
+
+Conversations are ordered by `updated_at DESC` (most recent activity). `updated_at` is the **sole ordering mechanism**; sending a new message updates the conversation's `updated_at`, which drives ordering. This is the only conversation-ordering rule — no implementation may apply another sort.
+
+### Pagination Strategy (canonical)
+
+Conversations and messages use **offset-based pagination** (`page`, `per_page` — default 20, max 50). Cursor-based pagination is intentionally deferred to a future phase and is NOT part of Phase 8.
+
+### Read Tracking
+
+Retrieving a conversation's message list (`GET /conversations/{id}/messages`) marks **EVERY unread incoming message in the conversation** as read (the entire conversation, not only the messages on the current page). It never marks messages sent by the authenticated user. No-op when there are no unread incoming messages (including empty conversations). Listing conversations or sending messages does NOT mark anything read.
+
+### Unread Count
+
+The sidebar unread badge is the SUM of every conversation's `unread_count` from `GET /conversations`. No dedicated unread-count endpoint exists.
+
+### API Evolution Policy (architectural philosophy)
+
+This is **not** an API versioning strategy. It documents how the Messaging API contract is intended to evolve so future phases remain consistent with this foundation:
+
+- Existing endpoints must remain **backward compatible** whenever possible.
+- Future messaging capabilities should **extend existing resources** (add optional fields, endpoints, or query parameters) instead of replacing them whenever practical.
+- Additional optional fields, endpoints, or query parameters may be introduced **without changing existing behavior**.
+- Existing response fields must **never change meaning**.
+- Existing business rules remain the **source of truth regardless of the transport layer** (polling today, WebSockets in a future phase). Transport changes must never alter ordering, read, ownership, or failure semantics.
+
+### Resource Responsibilities (canonical)
+
+`ConversationResource` represents **conversation metadata only** (participants, `last_message` summary, `unread_count`, `updated_at`); `MessageResource` represents **message data only**. Neither resource exposes the other's data — `ConversationResource` never embeds a full thread.
 
 ---
 
@@ -2060,9 +2109,22 @@ Only available after an exchange request is accepted.
 | GET    | /conversations/{id}/messages |
 | POST   | /conversations/{id}/messages |
 
+### Lifecycle (canonical)
+
+A Phase 8 message supports exactly two states: **sent** (created) and **read** (`read_at` set by read tracking). Editing, deleting, delivery status, reactions, attachments, and typing indicators are future extensions and are intentionally excluded — no fields or endpoints for them in Phase 8.
+
+### Responsibilities
+
+- **`GET /conversations/{id}/messages`** — the message thread, paginated (offset-based), ordered by `created_at ASC, id ASC` (oldest → newest). `created_at` is the ONLY chronological ordering field; `id ASC` exists ONLY as the deterministic tie-breaker when `created_at` values match — `id` must never be used as the primary chronological ordering mechanism. Triggers read tracking (see above). Use for opening a conversation and every thread refetch/poll.
+- **`POST /conversations/{id}/messages`** — send a message. Participant-only. Stored with `sender_id` = authenticated user, `read_at = null`; updates the conversation's `updated_at`.
+
 Body
 
-- message
+- message (required, string, max 2000, trimmed; whitespace-only rejected with 422)
+
+### Failure Behavior (canonical)
+
+A failed message write (validation or DB error) returns the appropriate error with **no side effects**: it does not update the conversation's `updated_at` (ordering), does not affect unread counts, and does not modify conversation metadata.
 
 ---
 

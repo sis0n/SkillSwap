@@ -608,6 +608,143 @@ I want to discuss schedules and learning goals,
 
 So we can prepare for our sessions.
 
+### Messaging Architecture Principles (single source of truth)
+
+The following invariants govern the Phase 8 Messaging architecture. All current and future Messaging work MUST conform to these principles (mirrored in `ROADMAP.MD` → Phase 8 and `API.MD` → Conversations/Messages):
+
+1. **Exactly two immutable participants** — every conversation has exactly two participants, derived from the accepted Exchange Request (sender + receiver). Participants are immutable; no additional participants may join; no group conversations exist in Phase 8.
+2. **Created on acceptance** — a conversation exists only after the Exchange Request transitions to `accepted`, created atomically within the same DB transaction as the transition. No conversation exists before acceptance.
+3. **Empty conversations are valid** — a conversation with zero messages is a valid state; it is listed and can be opened.
+4. **Always active and immutable** — Phase 8 conversations are always active and their shape (participants, linked exchange request) is immutable after creation. Archive, lock, and closed states are future concepts and must NOT be implemented in Phase 8.
+5. **Ordering depends only on latest activity** — conversation ordering depends solely on `updated_at DESC` (most recent activity); no other signal influences it. Messages use `created_at ASC, id ASC`, with `created_at` as the ONLY chronological field and `id ASC` purely as the deterministic tie-breaker.
+6. **Metadata and threads have separate responsibilities** — `ConversationResource` (conversation metadata) and `MessageResource` (message data) are independent; neither exposes the other's data. The list endpoint returns summaries, never full threads.
+7. **Read tracking is retrieval-scoped** — reading marks every unread incoming message in the conversation upon message-list retrieval; the user's own messages are never marked by it.
+8. **Polling is the transport** — messaging is polling/refetch-based; WebSockets are explicitly out of scope for Phase 8.
+9. **Transport must not affect business rules** — delivery/read semantics are business rules; the transport mechanism (HTTP polling now, WebSockets in a future phase) must never change them.
+10. **No partial state** — transaction boundaries guarantee that exchange acceptance and conversation creation succeed or fail together; a failed message write has no side effects (ordering, unread counts, and conversation metadata remain unaffected).
+
+### Conversation Lifecycle
+
+- A `Conversation` is created immediately when an exchange request transitions to `accepted` (atomically, in the same DB transaction as the accept). Conversations exist only after acceptance — there is no messaging before acceptance.
+- A conversation is **active** from creation and remains active for the lifetime of the exchange; it is not deleted when the request is cancelled.
+- **Empty conversations are valid.** A conversation exists with zero messages immediately upon acceptance, appears in the conversation list, and can be opened (the thread shows an empty state with the message input enabled).
+- **Deleting the exchange request** cascades the conversation and all its messages (FK cascade delete).
+- **Deleting a participant account** cascades their messages only (FK cascade delete); the conversation and the other participant's messages are preserved.
+- Conversations cannot be **archived, locked, or closed** in Phase 8. These lifecycle states are reserved for future phases and must NOT be implemented.
+
+### Conversation State (canonical)
+
+- Phase 8 conversations are **always active and immutable after creation**. Their participants and linked exchange request cannot change.
+- `archived`, `locked`, and `closed` are future-phase concepts, intentionally outside Phase 8. Future developers must not introduce an incompatible state model; any future state must extend this contract, never replace it.
+
+### Participants (canonical)
+
+- Every conversation has **exactly two participants**, derived from the accepted Exchange Request: the sender and the receiver.
+- Participants are **immutable** — no additional participants may join and none may be removed.
+- **No group conversations exist in Phase 8.** Future phases may introduce different conversation models, but Phase 8 remains deterministic.
+- Both participants may access the conversation; all other users receive 403.
+
+### Message Lifecycle (canonical)
+
+- A Phase 8 message supports exactly two states: **sent** (created) and **read** (`read_at` set by read tracking).
+- Editing, deleting, delivery status (sent/delivered), reactions, attachments, and typing indicators are **future extensions** and are intentionally excluded from the current architecture. No database fields or API endpoints for them exist in Phase 8.
+
+### Conversation Ordering (canonical)
+
+- Conversations are ordered by **`updated_at DESC`** (most recent activity first).
+- `updated_at` is the **sole ordering mechanism** for conversations. Sending a new message updates the conversation's `updated_at`, which drives ordering.
+- There is no other conversation-ordering rule (`created_at` is not used for conversation ordering). This determinism prevents different implementations from making different ordering decisions.
+
+### Message Ordering (canonical)
+
+- Messages within a conversation are ordered by **`created_at ASC, id ASC`** (oldest → newest).
+- **`created_at` is the ONLY chronological ordering field.** It is the sole source of message chronology; no other field (including `id`) may be treated as a timestamp.
+- **`id` exists ONLY as a deterministic tie-breaker** when `created_at` values are identical. It must never be used as the primary chronological ordering mechanism.
+- Clients, services, and future implementations must never rely on auto-incrementing `id` values as a substitute for `created_at`.
+- Any future implementation must preserve this ordering contract regardless of the storage mechanism.
+
+### Pagination Strategy (canonical)
+
+- Conversations and messages use **offset-based pagination** (`page`, `per_page` — default 20, max 50, matching the Discover/Exchange contract).
+- No infinite-scroll contract is defined by the API; the frontend may paginate on demand.
+- **Cursor-based pagination is intentionally deferred to a future phase** and must NOT be added in Phase 8.
+
+### Read Tracking (canonical)
+
+- **Trigger:** retrieving the conversation's message list (`GET /api/v1/conversations/{id}/messages`) marks messages as read.
+- **Scope:** EVERY unread incoming message in the conversation is marked read (`sender_id != authenticated user` AND `read_at IS NULL` → `read_at = now()`) — the entire conversation, not only the messages returned on the current page.
+- The authenticated user's own messages are never marked read by this action.
+- The action is a **no-op** when there are no unread incoming messages (including empty conversations).
+- Listing conversations and sending messages do NOT trigger read tracking.
+
+### Unread Badge (canonical)
+
+- Each conversation exposes `unread_count` in `GET /api/v1/conversations`.
+- The sidebar unread badge is the **sum** of every conversation's `unread_count`, derived from the existing conversations query.
+- **No dedicated unread-count endpoint exists** and no additional HTTP request is required.
+
+### Resource Responsibilities (canonical)
+
+- `ConversationResource` represents **conversation metadata only** (participants, `last_message` summary, `unread_count`, `updated_at`).
+- `MessageResource` represents **message data only** (sender, body, `read_at`, timestamps).
+- Neither resource becomes responsible for the other's data: `ConversationResource` never embeds a message thread, and `MessageResource` never embeds participant metadata beyond its sender. This establishes clear long-term API boundaries.
+
+### Cache Ownership (canonical)
+
+- **Conversation summaries** are owned by the frontend `["conversations"]` query (list metadata: participants, `last_message`, `unread_count`, `updated_at`).
+- **Message threads** are owned exclusively by the `["messages"]` query (per-conversation thread data).
+- **Unread counts** are owned by the conversations query — `unread_count` lives on `ConversationResource`, and the sidebar badge derives from it. There is no standalone unread cache.
+- **No duplication:** message thread data must never be embedded inside conversation cache entries. `last_message` in the conversations cache is a summary only; the `["messages"]` cache is the single source of truth for the thread.
+
+### Transaction Boundaries
+
+- Exchange Request **acceptance** and **Conversation creation** must succeed or fail together within a single DB transaction — **no partial state may exist**.
+
+### Failure Behavior (canonical)
+
+- A **failed message write** (validation or DB error) must not:
+  - update conversation ordering (`updated_at` is untouched),
+  - affect unread counts,
+  - modify conversation metadata.
+- A failed message write returns the appropriate error to the client with no side effects.
+
+### Real-time Behavior
+
+- Messaging is polling/refetch-based. **No WebSockets in the MVP.**
+- **Polling contract:**
+  - The active conversation's message list polls every **~5 seconds** (`refetchInterval`).
+  - **Window focus refetch** is enabled — returning to the tab refreshes immediately.
+  - Background polling for the active thread continues while unfocused; threads refresh on focus (performance decision, not a correctness one).
+  - After a **successful send**, the thread refetches via cache invalidation; the poll interval resets normally.
+  - **Network interruption:** a failed poll leaves the last cached thread in place, preserves the user's scroll position, and may show a non-blocking "reconnecting" indicator; the next successful poll recovers automatically. Messages are never lost or re-ordered client-side.
+- Polling/refetches must **not** auto-scroll the chat window. Auto-scroll to the newest message occurs only (a) when a conversation is initially opened and (b) immediately after the authenticated user successfully sends a message — preserving the user's reading position.
+- The transport (HTTP polling) must never alter the read/ordering business rules above.
+- Notifications (email, push, in-app) are out of scope for Phase 8.
+
+### API Evolution Policy (architectural philosophy)
+
+This is **not** an API versioning strategy. It documents how the Phase 8 Messaging API contract is intended to evolve so future phases remain consistent with this foundation:
+
+- Existing endpoints must remain **backward compatible** whenever possible.
+- Future messaging capabilities should **extend existing resources** (add optional fields, endpoints, or query parameters) instead of replacing them whenever practical.
+- Additional optional fields, endpoints, or query parameters may be introduced **without changing existing behavior**.
+- Existing response fields must **never change meaning**.
+- Existing business rules remain the **source of truth regardless of the transport layer** (polling today, WebSockets in a future phase). Transport changes must never alter ordering, read, ownership, or failure semantics.
+
+### Future Compatibility (architectural intent only)
+
+The current design intentionally accommodates future features, which are **NOT part of Phase 8 and must NOT be implemented now**:
+
+- Message editing and message deletion
+- Reactions and attachments
+- Typing indicators
+- Delivery status (sent/delivered)
+- Archived / locked / closed conversation states
+- WebSocket transport
+- Message search
+
+This section exists solely to document architectural intent. No implementation work should be performed for these features in Phase 8.
+
 ---
 
 # Learning Sessions
