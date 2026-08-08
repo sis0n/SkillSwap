@@ -2429,61 +2429,61 @@ Stage 4 must not:
 - Alter database schema
 
 ### Backend
-- [ ] Guest cannot list conversations (401)
-- [ ] Guest cannot send messages (401)
-- [ ] Authenticated user can list own conversations
-- [ ] Non-participant cannot view a conversation (403)
-- [ ] Non-participant cannot send a message (403)
-- [ ] Conversation created on acceptance (exactly one row; unique `exchange_request_id`)
-- [ ] No conversation exists before acceptance
-- [ ] Conversation appears in both participants' lists
-- [ ] Empty conversation is valid — created on acceptance with zero messages, appears in the list, and opens with an empty message list
-- [ ] Send message — valid body stored correctly
-- [ ] Send message — empty body (422)
-- [ ] Send message — whitespace-only body (422)
-- [ ] Send message — body exceeding max length (422)
-- [ ] Message body trimmed on store
-- [ ] Sending a message updates the conversation's `updated_at` (drives ordering)
-- [ ] Ordering — conversations by `updated_at DESC` (most recent activity first)
-- [ ] Ordering — messages ascending (`created_at ASC, id ASC`, oldest → newest)
-- [ ] Pagination — conversations honors `per_page` default 20, max 50, and `page`
-- [ ] Pagination — messages honors `per_page` default 20, max 50, and `page`
-- [ ] Read tracking — retrieving the message list marks the recipient's unread incoming messages as read
-- [ ] Read tracking — marks EVERY unread incoming message in the conversation, not only the messages on the current page
-- [ ] Read tracking — the authenticated user's own messages are never marked read by message-list retrieval
-- [ ] Read tracking — no-op when there are no unread incoming messages (including empty conversations)
-- [ ] Unread count — reflects unread messages from the other participant
-- [ ] Concurrency — accepting the same request creates exactly one conversation
-- [ ] Transaction atomicity — if conversation creation fails, the accept transition rolls back (no partial state)
-- [ ] Failure behavior — a rejected/errored message write leaves conversation ordering (`updated_at`), unread counts, and conversation metadata unchanged
-- [ ] Participants — exactly two, immutable, derived from the accepted request; no participant can be added or removed
-- [ ] Lifecycle — deleting the exchange request cascades the conversation and its messages; a deleted participant's account cascades their messages only
-- [ ] No archive/lock/close endpoints or states exist (Phase 8 scope guard)
-- [ ] Regression — Phase 7 accept/decline/cancel tests still pass after the accept-path extension
+- [x] Guest cannot list conversations (401)
+- [x] Guest cannot send messages (401)
+- [x] Authenticated user can list own conversations
+- [x] Non-participant cannot view a conversation (403)
+- [x] Non-participant cannot send a message (403)
+- [x] Conversation created on acceptance (exactly one row; unique `exchange_request_id`)
+- [x] No conversation exists before acceptance
+- [x] Conversation appears in both participants' lists
+- [x] Empty conversation is valid — created on acceptance with zero messages, appears in the list, and opens with an empty message list
+- [x] Send message — valid body stored correctly
+- [x] Send message — empty body (422)
+- [x] Send message — whitespace-only body (422)
+- [x] Send message — body exceeding max length (422)
+- [x] Message body trimmed on store
+- [x] Sending a message updates the conversation's `updated_at` (drives ordering)
+- [x] Ordering — conversations by `updated_at DESC` (most recent activity first)
+- [x] Ordering — messages ascending (`created_at ASC, id ASC`, oldest → newest)
+- [x] Pagination — conversations honors `per_page` default 20, max 50, and `page`
+- [x] Pagination — messages honors `per_page` default 20, max 50, and `page`
+- [x] Read tracking — retrieving the message list marks the recipient's unread incoming messages as read
+- [x] Read tracking — marks EVERY unread incoming message in the conversation, not only the messages on the current page
+- [x] Read tracking — the authenticated user's own messages are never marked read by message-list retrieval
+- [x] Read tracking — no-op when there are no unread incoming messages (including empty conversations)
+- [x] Unread count — reflects unread messages from the other participant
+- [x] Concurrency — accepting the same request creates exactly one conversation
+- [x] Transaction atomicity — if conversation creation fails, the accept transition rolls back (no partial state)
+- [x] Failure behavior — a rejected/errored message write leaves conversation ordering (`updated_at`), unread counts, and conversation metadata unchanged
+- [x] Participants — exactly two, immutable, derived from the accepted request; no participant can be added or removed
+- [x] Lifecycle — deleting the exchange request cascades the conversation and its messages; deleting a participant account follows the existing Phase 2 FK cascade behavior (`users → exchange_requests → conversations → messages`, all cascade delete) — the known data-retention conflict remains unresolved and outside Stage 4 scope
+- [x] No archive/lock/close endpoints or states exist (Phase 8 scope guard)
+- [x] Regression — Phase 7 accept/decline/cancel tests still pass after the accept-path extension
 
 ### Frontend
-- [ ] Initial render
-- [ ] Loading state
-- [ ] Empty conversations state
-- [ ] Empty thread state (no conversation selected)
-- [ ] Empty conversation thread (zero messages — valid state, input enabled)
-- [ ] Error state
-- [ ] Conversation selection
-- [ ] Send message interaction
-- [ ] Auto-scroll on initial open and after own send — NOT on polling/refetch
-- [ ] Unread badge (sidebar = sum of `unread_count`; no additional request)
-- [ ] Responsive layout
-- [ ] Dark mode
+- [x] Initial render
+- [x] Loading state
+- [x] Empty conversations state
+- [x] Empty thread state (no conversation selected)
+- [x] Empty conversation thread (zero messages — valid state, input enabled)
+- [x] Error state
+- [x] Conversation selection
+- [x] Send message interaction
+- [x] Auto-scroll on initial open and after own send — NOT on polling/refetch
+- [x] Unread badge (sidebar = sum of `unread_count`; no additional request)
+- [x] Responsive layout
+- [x] Dark mode
 
 ### Stage 4 Completion Criteria
 Stage 4 is complete when:
 
-- [ ] All backend test cases pass
-- [ ] All frontend test cases pass (manual verification — no test framework installed)
-- [ ] No regressions in existing test suites (especially Phase 7)
-- [ ] Integration between frontend and backend verified
-- [ ] All issues found during testing are resolved
-- [ ] Documentation is synchronized
+- [x] All backend test cases pass
+- [x] All frontend test cases pass (manual verification — no test framework installed)
+- [x] No regressions in existing test suites (especially Phase 7)
+- [x] Integration between frontend and backend verified
+- [x] All issues found during testing are resolved
+- [x] Documentation is synchronized
 
 Next stage (Stage 5) must not begin until all items above are satisfied.
 

@@ -2213,12 +2213,12 @@ Participant-only. Sends a message. The conversation's `updated_at` is updated at
 
 **Request Body:**
 
-| Field   | Type   | Required | Description                       |
-| ------- | ------ | -------- | --------------------------------- |
-| message | string | yes      | Message body (max 2000 characters) |
+| Field | Type   | Required | Description                       |
+| ----- | ------ | -------- | --------------------------------- |
+| body  | string | yes      | Message body (max 2000 characters) |
 
 **Validation Rules:**
-- `message`: required, string, max:2000 — trimmed of leading/trailing whitespace; whitespace-only values are rejected with 422.
+- `body`: required, string, max:2000 — trimmed of leading/trailing whitespace; whitespace-only values are rejected with 422.
 
 **Success Response (201):** `data.message` as a single `MessageResource` (shape above, `read_at: null`) with `message: "Message sent."`.
 
@@ -2226,7 +2226,7 @@ Participant-only. Sends a message. The conversation's `updated_at` is updated at
 - 401: Unauthenticated
 - 403: You are not part of this conversation.
 - 404: Conversation not found
-- 422: The message field is required. / The message field must be a string. / The message field must not be greater than 2000 characters.
+- 422: The body field is required. / The body field must be a string. / The body field must not be greater than 2000 characters.
 
 ### Failure Behavior (canonical)
 

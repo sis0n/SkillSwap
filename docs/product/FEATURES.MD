@@ -714,7 +714,7 @@ The following invariants govern the Phase 8 Messaging architecture. All current 
 - **Polling contract:**
   - The active conversation's message list polls every **~5 seconds** (`refetchInterval`).
   - **Window focus refetch** is enabled — returning to the tab refreshes immediately.
-  - Background polling for the active thread continues while unfocused; threads refresh on focus (performance decision, not a correctness one).
+  - **Background polling** does not continue for the active thread while the tab is unfocused; threads refresh on focus instead (React Query's default `refetchIntervalInBackground: false` — a performance decision, not a correctness one).
   - After a **successful send**, the thread refetches via cache invalidation; the poll interval resets normally.
   - **Network interruption:** a failed poll leaves the last cached thread in place, preserves the user's scroll position, and may show a non-blocking "reconnecting" indicator; the next successful poll recovers automatically. Messages are never lost or re-ordered client-side.
 - Polling/refetches must **not** auto-scroll the chat window. Auto-scroll to the newest message occurs only (a) when a conversation is initially opened and (b) immediately after the authenticated user successfully sends a message — preserving the user's reading position.

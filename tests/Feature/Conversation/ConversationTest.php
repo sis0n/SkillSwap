@@ -10,6 +10,7 @@ use App\Models\Message;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\UserSkill;
+use App\Services\Exchange\ExchangeRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -202,6 +203,30 @@ class ConversationTest extends TestCase
         $this->assertDatabaseCount('conversations', 1);
     }
 
+    public function test_acceptance_rolls_back_if_conversation_creation_fails(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $exchangeRequest = $this->createPendingRequest($sender, $receiver);
+
+        Conversation::creating(function (Conversation $conversation): void {
+            throw new \RuntimeException('Simulated conversation creation failure.');
+        });
+
+        try {
+            app(ExchangeRequestService::class)->accept($exchangeRequest);
+            $this->fail('Acceptance should have failed when conversation creation fails.');
+        } catch (\RuntimeException) {
+            // Expected — the transaction must roll back.
+        }
+
+        $this->assertDatabaseHas('exchange_requests', [
+            'id' => $exchangeRequest->id,
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseCount('conversations', 0);
+    }
+
     // ---------------------------------------------------------------
     // List
     // ---------------------------------------------------------------
@@ -357,6 +382,24 @@ class ConversationTest extends TestCase
             ->assertJsonPath('meta.per_page', 50);
     }
 
+    public function test_list_paginates_with_default_per_page_of_twenty(): void
+    {
+        $user = $this->createEligibleUser();
+
+        for ($i = 0; $i < 25; $i++) {
+            $this->createConversation($user, $this->createEligibleUser());
+        }
+
+        $response = $this->actingAs($user)->getJson('/api/v1/conversations');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(20, 'data.conversations')
+            ->assertJsonPath('meta.per_page', 20)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.total', 25);
+    }
+
     // ---------------------------------------------------------------
     // Show
     // ---------------------------------------------------------------
@@ -508,6 +551,45 @@ class ConversationTest extends TestCase
             ->assertJsonPath('meta.last_page', 3);
     }
 
+    public function test_messages_paginate_with_default_per_page_of_twenty(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $conversation = $this->createConversation($sender, $receiver);
+
+        for ($i = 0; $i < 25; $i++) {
+            $this->createMessage($conversation, $sender, "message {$i}");
+        }
+
+        $response = $this->actingAs($sender)
+            ->getJson("/api/v1/conversations/{$conversation->id}/messages");
+
+        $response->assertStatus(200)
+            ->assertJsonCount(20, 'data.messages')
+            ->assertJsonPath('meta.per_page', 20)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.total', 25);
+    }
+
+    public function test_messages_paginate_clamps_per_page_to_maximum(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $conversation = $this->createConversation($sender, $receiver);
+
+        for ($i = 0; $i < 55; $i++) {
+            $this->createMessage($conversation, $sender, "message {$i}");
+        }
+
+        $response = $this->actingAs($sender)
+            ->getJson("/api/v1/conversations/{$conversation->id}/messages?per_page=100");
+
+        $response->assertStatus(200)
+            ->assertJsonCount(50, 'data.messages')
+            ->assertJsonPath('meta.per_page', 50);
+    }
+
     // ---------------------------------------------------------------
     // Messages — send
     // ---------------------------------------------------------------
@@ -643,6 +725,35 @@ class ConversationTest extends TestCase
         $this->assertNotSame($before, $after);
     }
 
+    public function test_sending_a_message_moves_the_conversation_to_the_top_of_the_list(): void
+    {
+        $user = $this->createEligibleUser();
+        $otherA = $this->createEligibleUser();
+        $otherB = $this->createEligibleUser();
+        $conversationA = $this->createConversation($user, $otherA);
+        $conversationB = $this->createConversation($user, $otherB);
+
+        DB::table('conversations')->where('id', $conversationA->id)->update([
+            'updated_at' => '2026-01-01 00:00:00',
+        ]);
+        DB::table('conversations')->where('id', $conversationB->id)->update([
+            'updated_at' => '2026-01-02 00:00:00',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/conversations/{$conversationA->id}/messages", [
+                'body' => 'Bump!',
+            ])
+            ->assertStatus(201);
+
+        $response = $this->actingAs($user)->getJson('/api/v1/conversations');
+
+        $this->assertSame(
+            [$conversationA->id, $conversationB->id],
+            array_column($response->json('data.conversations'), 'id')
+        );
+    }
+
     public function test_failed_message_write_leaves_conversation_unchanged(): void
     {
         $sender = $this->createEligibleUser();
@@ -665,6 +776,10 @@ class ConversationTest extends TestCase
 
         $this->assertSame($before, $after);
         $this->assertDatabaseCount('messages', 1);
+
+        $this->actingAs($sender)->getJson('/api/v1/conversations')
+            ->assertStatus(200)
+            ->assertJsonPath('data.conversations.0.unread_count', 1);
     }
 
     // ---------------------------------------------------------------
@@ -755,6 +870,26 @@ class ConversationTest extends TestCase
         $this->assertDatabaseCount('messages', 0);
     }
 
+    public function test_read_tracking_is_no_op_when_no_unread_incoming_messages_exist(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $conversation = $this->createConversation($sender, $receiver);
+        $alreadyRead = $this->createMessage($conversation, $sender, 'already read', [
+            'read_at' => now(),
+        ]);
+        $own = $this->createMessage($conversation, $receiver, 'own message');
+
+        $before = $this->readAt($alreadyRead->id);
+
+        $this->actingAs($receiver)
+            ->getJson("/api/v1/conversations/{$conversation->id}/messages")
+            ->assertStatus(200);
+
+        $this->assertSame($before, $this->readAt($alreadyRead->id));
+        $this->assertNull($this->readAt($own->id));
+    }
+
     public function test_listing_conversations_does_not_trigger_read_tracking(): void
     {
         $sender = $this->createEligibleUser();
@@ -823,6 +958,29 @@ class ConversationTest extends TestCase
             ->assertJsonPath('data.conversations.0.unread_count', 0);
     }
 
+    public function test_unread_counts_are_independent_across_multiple_conversations(): void
+    {
+        $user = $this->createEligibleUser();
+        $otherA = $this->createEligibleUser();
+        $otherB = $this->createEligibleUser();
+        $conversationA = $this->createConversation($user, $otherA);
+        $conversationB = $this->createConversation($user, $otherB);
+
+        $this->createMessage($conversationA, $otherA, 'A1');
+        $this->createMessage($conversationA, $otherA, 'A2');
+        $this->createMessage($conversationA, $user, 'own message');
+        $this->createMessage($conversationB, $otherB, 'B1');
+        $this->createMessage($conversationB, $otherB, 'B2');
+        $this->createMessage($conversationB, $otherB, 'B3');
+
+        $response = $this->actingAs($user)->getJson('/api/v1/conversations');
+
+        $response->assertStatus(200)->assertJsonCount(2, 'data.conversations');
+        $byId = collect($response->json('data.conversations'))->keyBy('id');
+        $this->assertSame(2, $byId[$conversationA->id]['unread_count']);
+        $this->assertSame(3, $byId[$conversationB->id]['unread_count']);
+    }
+
     // ---------------------------------------------------------------
     // Lifecycle & cascade
     // ---------------------------------------------------------------
@@ -860,6 +1018,23 @@ class ConversationTest extends TestCase
 
         $conversation->exchangeRequest->delete();
 
+        $this->assertDatabaseMissing('conversations', ['id' => $conversation->id]);
+        $this->assertDatabaseCount('messages', 0);
+    }
+
+    public function test_deleting_participant_account_follows_phase_2_fk_cascade(): void
+    {
+        $sender = $this->createEligibleUser();
+        $receiver = $this->createEligibleUser();
+        $conversation = $this->createConversation($sender, $receiver);
+        $this->createMessage($conversation, $sender, 'from sender');
+        $this->createMessage($conversation, $receiver, 'from receiver');
+
+        $sender->delete();
+
+        $this->assertDatabaseMissing('exchange_requests', [
+            'id' => $conversation->exchange_request_id,
+        ]);
         $this->assertDatabaseMissing('conversations', ['id' => $conversation->id]);
         $this->assertDatabaseCount('messages', 0);
     }
