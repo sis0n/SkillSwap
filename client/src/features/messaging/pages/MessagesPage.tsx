@@ -1,88 +1,33 @@
 import { AlertCircle, RefreshCw } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuthStore } from "@/stores/authStore"
 
 import { ChatWindow } from "../components/ChatWindow"
 import { ConversationList } from "../components/ConversationList"
 import { MessagesEmptyState } from "../components/MessagesEmptyState"
 import { MessagesLoadingState } from "../components/MessagesLoadingState"
-import {
-  PLACEHOLDER_CONVERSATIONS,
-  PLACEHOLDER_CURRENT_USER,
-  PLACEHOLDER_MESSAGES_BY_CONVERSATION,
-} from "../data/placeholder"
-import type { Conversation, Message, MessageUser } from "../types/messaging"
+import { useConversations } from "../hooks/useMessaging"
 
-interface MessagesPageProps {
-  isLoading?: boolean
-  isError?: boolean
-  error?: string | null
-  onRetry?: () => void
-  conversations?: Conversation[]
-  messagesByConversation?: Record<number, Message[]>
-  currentUser?: MessageUser
-}
-
-export default function MessagesPage({
-  isLoading = false,
-  isError = false,
-  error = null,
-  onRetry = () => {},
-  conversations = PLACEHOLDER_CONVERSATIONS,
-  messagesByConversation = PLACEHOLDER_MESSAGES_BY_CONVERSATION,
-  currentUser = PLACEHOLDER_CURRENT_USER,
-}: MessagesPageProps) {
+export default function MessagesPage() {
+  const { data, isLoading, isError, error, refetch } = useConversations()
+  const currentUser = useAuthStore((state) => state.user)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  // UI demonstration only: sent messages are appended to this local component
-  // state solely to exercise the ChatInput -> ChatWindow send interaction
-  // visually. It does not simulate a backend, does not persist anything, and
-  // will be fully replaced by the Stage 3 send mutation (POST messages).
-  const [demoSentMessages, setDemoSentMessages] = useState<
-    Record<number, Message[]>
-  >({})
-  const nextDemoMessageId = useRef(0)
+  const conversations = data?.conversations ?? []
 
   const selectedConversation = useMemo(
     () => conversations.find((c) => c.id === selectedId) ?? null,
     [conversations, selectedId],
   )
 
-  const threadMessages = useMemo(() => {
-    if (selectedId === null) return []
-    return [
-      ...(messagesByConversation[selectedId] ?? []),
-      ...(demoSentMessages[selectedId] ?? []),
-    ]
-  }, [selectedId, messagesByConversation, demoSentMessages])
-
-  function handleSend(body: string) {
-    if (!selectedConversation || !currentUser) return
-    const message: Message = {
-      id: nextDemoMessageId.current++,
-      conversation_id: selectedConversation.id,
-      sender_id: currentUser.id,
-      sender: currentUser,
-      body,
-      read_at: null,
-      created_at: new Date().toISOString(),
-    }
-    setDemoSentMessages((prev) => ({
-      ...prev,
-      [selectedConversation.id]: [
-        ...(prev[selectedConversation.id] ?? []),
-        message,
-      ],
-    }))
-  }
-
   if (isLoading) {
     return <MessagesLoadingState />
   }
 
-  if (isError) {
+  if (isError && conversations.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
         <AlertCircle className="size-10 text-destructive" aria-hidden="true" />
@@ -91,10 +36,10 @@ export default function MessagesPage({
             Unable to load your conversations.
           </p>
           {error && (
-            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
           )}
         </div>
-        <Button variant="outline" onClick={onRetry}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RefreshCw className="size-4" />
           Retry
         </Button>
@@ -131,9 +76,8 @@ export default function MessagesPage({
       >
         <ChatWindow
           conversation={selectedConversation}
-          messages={threadMessages}
+          conversationId={selectedId}
           currentUserId={currentUser?.id}
-          onSend={handleSend}
           onBack={() => setSelectedId(null)}
         />
       </div>

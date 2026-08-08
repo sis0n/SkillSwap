@@ -5,19 +5,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface ChatInputProps {
-  onSend?: (body: string) => void
+  onSend?: (body: string) => Promise<boolean> | boolean | void
   placeholder?: string
+  disabled?: boolean
 }
 
-export function ChatInput({ onSend, placeholder = "Type a message..." }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  placeholder = "Type a message...",
+  disabled = false,
+}: ChatInputProps) {
   const [value, setValue] = useState("")
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const body = value.trim()
     if (!body) return
-    onSend?.(body)
-    setValue("")
+    const sent = await onSend?.(body)
+    if (sent) setValue("")
   }
 
   return (
@@ -28,13 +33,14 @@ export function ChatInput({ onSend, placeholder = "Type a message..." }: ChatInp
         placeholder={placeholder}
         aria-label="Message"
         autoComplete="off"
+        disabled={disabled}
         className="h-10"
       />
       <Button
         type="submit"
         size="icon"
         className="size-10 shrink-0"
-        disabled={!value.trim()}
+        disabled={disabled || !value.trim()}
         aria-label="Send message"
       >
         <Send className="size-4" />

@@ -1,57 +1,73 @@
-import { ArrowLeft, MessageSquareText } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { AlertCircle, ArrowLeft, MessageSquareText, RefreshCw, WifiOff } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
-import type { Conversation, Message } from "../types/messaging"
+import { Button } from "@/components/ui/button"
+import { getApiErrorMessage, getApiFieldErrors } from "@/lib/utils"
+
+import { useConversation, useMessages, useSendMessage } from "../hooks/useMessaging"
+import { sendMessageSchema } from "../schemas/messagingSchemas"
+import type { Conversation } from "../types/messaging"
 import { getDisplayName, getInitials } from "../utils"
 import { ChatInput } from "./ChatInput"
 import { MessageBubble } from "./MessageBubble"
 
 interface ChatWindowProps {
   conversation: Conversation | null
-  messages: Message[]
+  conversationId: number | null
   currentUserId?: number
-  onSend?: (body: string) => void
   onBack?: () => void
 }
 
 export function ChatWindow({
   conversation,
-  messages,
+  conversationId,
   currentUserId,
-  onSend,
   onBack,
 }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevConversationId = useRef<number | null>(null)
   const prevMessageCount = useRef(0)
   const justOpened = useRef(false)
+  const openedEmpty = useRef(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+
+  const { data: conversationData } = useConversation(conversationId)
+  const messagesQuery = useMessages(conversationId)
+  const sendMessage = useSendMessage()
+
+  const headerConversation = conversationData ?? conversation
+  const messages = messagesQuery.data ?? []
+  const isReconnecting =
+    (messagesQuery.isRefetchError || messagesQuery.isPaused) && messages.length > 0
 
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || !conversation) {
+    if (!el || !headerConversation) {
       prevConversationId.current = null
       prevMessageCount.current = 0
       justOpened.current = false
+      openedEmpty.current = false
       return
     }
 
-    const isNewConversation = prevConversationId.current !== conversation.id
+    const isNewConversation = prevConversationId.current !== headerConversation.id
 
     if (isNewConversation) {
-      prevConversationId.current = conversation.id
+      prevConversationId.current = headerConversation.id
       prevMessageCount.current = messages.length
+      openedEmpty.current = messages.length === 0
       justOpened.current = true
       el.scrollTop = el.scrollHeight
       return
     }
 
     if (justOpened.current) {
-      if (messages.length > 0) {
+      justOpened.current = false
+      if (openedEmpty.current && messages.length > 0) {
         el.scrollTop = el.scrollHeight
-        justOpened.current = false
+        prevMessageCount.current = messages.length
+        return
       }
-      prevMessageCount.current = messages.length
-      return
     }
 
     if (messages.length > prevMessageCount.current) {
@@ -61,9 +77,28 @@ export function ChatWindow({
       }
     }
     prevMessageCount.current = messages.length
-  }, [conversation, messages, currentUserId])
+  }, [headerConversation, messages, currentUserId])
 
-  if (!conversation) {
+  async function handleSend(body: string): Promise<boolean> {
+    if (conversationId === null) return false
+    setSendError(null)
+
+    const result = sendMessageSchema.safeParse({ body })
+    if (!result.success) {
+      setSendError(result.error.issues[0]?.message ?? "Invalid message")
+      return false
+    }
+
+    try {
+      await sendMessage.mutateAsync({ conversationId, body: result.data.body })
+      return true
+    } catch (error) {
+      setSendError(getApiFieldErrors(error).body ?? getApiErrorMessage(error))
+      return false
+    }
+  }
+
+  if (!conversationId || !headerConversation) {
     return (
       <div className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-background px-4 text-center">
         <MessageSquareText
@@ -93,30 +128,37 @@ export function ChatWindow({
           </button>
         )}
 
-        {conversation.other_user.profile?.avatar_url ? (
+        {headerConversation.other_user.profile?.avatar_url ? (
           <img
-            src={conversation.other_user.profile.avatar_url}
+            src={headerConversation.other_user.profile.avatar_url}
             alt=""
             className="size-9 shrink-0 rounded-full object-cover"
           />
         ) : (
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
             {getInitials(
-              conversation.other_user.first_name,
-              conversation.other_user.last_name,
+              headerConversation.other_user.first_name,
+              headerConversation.other_user.last_name,
             )}
           </span>
         )}
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
-            {getDisplayName(conversation.other_user)}
+            {getDisplayName(headerConversation.other_user)}
           </p>
           <p className="truncate text-xs text-muted-foreground">
-            @{conversation.other_user.username}
+            @{headerConversation.other_user.username}
           </p>
         </div>
       </header>
+
+      {isReconnecting && (
+        <div className="flex shrink-0 items-center justify-center gap-2 border-b bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+          <WifiOff className="size-3.5" aria-hidden="true" />
+          Reconnecting...
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -124,7 +166,31 @@ export function ChatWindow({
         aria-label="Messages"
         className="min-h-0 flex-1 overflow-y-auto p-4"
       >
-        {messages.length === 0 ? (
+        {messagesQuery.isPending ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              Loading messages...
+            </p>
+          </div>
+        ) : messagesQuery.isError && messages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
+            <AlertCircle
+              className="size-8 text-destructive"
+              aria-hidden="true"
+            />
+            <p className="text-sm font-medium text-destructive">
+              Unable to load messages.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => messagesQuery.refetch()}
+            >
+              <RefreshCw className="size-3.5" />
+              Retry
+            </Button>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
             <MessageSquareText
               className="size-10 text-muted-foreground"
@@ -149,7 +215,15 @@ export function ChatWindow({
       </div>
 
       <div className="shrink-0 border-t p-3">
-        <ChatInput onSend={onSend} />
+        {sendError && (
+          <p
+            role="alert"
+            className="mb-2 text-sm text-destructive"
+          >
+            {sendError}
+          </p>
+        )}
+        <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
       </div>
     </div>
   )

@@ -2334,69 +2334,69 @@ Stage 3 must not modify:
 - Any PHP or backend code
 
 ### API
-- [ ] Create `listConversations(params?)`
-- [ ] Create `getConversation(id)`
-- [ ] Create `getMessages(conversationId, params?)`
-- [ ] Create `sendMessage(conversationId, body)`
+- [x] Create `listConversations(params?)`
+- [x] Create `getConversation(id)`
+- [x] Create `getMessages(conversationId, params?)`
+- [x] Create `sendMessage(conversationId, body)`
 
 ### Hooks
-- [ ] Create `useConversations()` (query, staleTime 30s, queryKey `["conversations"]`, `keepPreviousData`)
-- [ ] Create `useConversation(id)` (single-conversation metadata query, disabled when `id` is null)
-- [ ] Create `useMessages(conversationId)` (query, polling — see Polling Contract below; MUST NOT auto-scroll on refetch)
-- [ ] Create `useSendMessage()` (mutation, invalidates `["conversations"]` and `["messages"]`)
-- [ ] Create `useUnreadConversationCount()` (sidebar badge — DERIVED: sums every conversation's `unread_count` from the existing `useConversations()` query data; performs NO additional API request; no dedicated endpoint exists)
+- [x] Create `useConversations()` (query, staleTime 30s, queryKey `["conversations"]`, `keepPreviousData`)
+- [x] Create `useConversation(id)` (single-conversation metadata query, disabled when `id` is null)
+- [x] Create `useMessages(conversationId)` (query, polling — see Polling Contract below; MUST NOT auto-scroll on refetch)
+- [x] Create `useSendMessage()` (mutation, invalidates `["conversations"]` and `["messages"]`)
+- [x] Create `useUnreadConversationCount()` (sidebar badge — DERIVED: sums every conversation's `unread_count` from the existing `useConversations()` query data; performs NO additional API request; no dedicated endpoint exists)
 
 ### Schemas
-- [ ] Create `sendMessageSchema` (Zod: body required, max 2000, trimmed — matches backend; whitespace-only never sent)
+- [x] Create `sendMessageSchema` (Zod: body required, max 2000, trimmed — matches backend; whitespace-only never sent)
 
 ### Polling Contract (canonical)
-- [ ] Active conversation thread polls every ~5 seconds via `refetchInterval`; **window focus refetch** is enabled (`refetchOnWindowFocus`) so returning to the tab refreshes immediately
-- [ ] **Background polling** continues for the active conversation while the tab is unfocused (React Query's default `refetchIntervalInBackground: false` — the thread refreshes on focus instead); this is a performance decision, not a correctness one
-- [ ] After a successful send, the thread refetches (via cache invalidation) rather than continuing the existing poll cycle; the poll interval resets normally
-- [ ] **Temporary network interruption** — a failed poll leaves the last cached thread in place, keeps the user's scroll position, and shows a non-blocking "reconnecting" indicator; the next successful poll recovers automatically; messages are never lost or re-ordered client-side
-- [ ] Polling must never change read/ordering business rules — it is transport only
+- [x] Active conversation thread polls every ~5 seconds via `refetchInterval`; **window focus refetch** is enabled (`refetchOnWindowFocus`) so returning to the tab refreshes immediately
+- [x] **Background polling** does NOT continue for the active conversation while the tab is unfocused (React Query's default `refetchIntervalInBackground: false` — the thread refreshes on focus instead); this is a performance decision, not a correctness one
+- [x] After a successful send, the thread refetches (via cache invalidation) rather than continuing the existing poll cycle; the poll interval resets normally
+- [x] **Temporary network interruption** — a failed poll leaves the last cached thread in place, keeps the user's scroll position, and shows a non-blocking "reconnecting" indicator; the next successful poll recovers automatically; messages are never lost or re-ordered client-side
+- [x] Polling must never change read/ordering business rules — it is transport only
 
 ### Integration
-- [ ] Replace visual-only UI with real API data (placeholder fixtures removed)
-- [ ] Connect `MessagesPage` conversation list
-- [ ] Connect unread count badge (per conversation from `unread_count`; sidebar badge = SUM across conversations)
-- [ ] Connect `ChatWindow` thread load (oldest → newest) with auto-scroll to bottom
-- [ ] Auto-scroll triggers — (a) when a conversation is initially opened and (b) immediately after the authenticated user successfully sends a message; polling/refetches MUST NOT auto-scroll (preserve reading position)
-- [ ] Connect send message (append via API + cache invalidation)
-- [ ] Connect read-tracking refresh (unread clears after viewing the conversation — driven by the message-list retrieval, which marks the WHOLE conversation read)
-- [ ] Connect empty conversation thread (zero messages — valid state, input enabled)
-- [ ] Connect loading state
-- [ ] Connect empty states (no conversations / no thread selected)
-- [ ] Connect error state with retry
+- [x] Replace visual-only UI with real API data (placeholder fixtures removed)
+- [x] Connect `MessagesPage` conversation list
+- [x] Connect unread count badge (per conversation from `unread_count`; sidebar badge = SUM across conversations)
+- [x] Connect `ChatWindow` thread load (oldest → newest) with auto-scroll to bottom
+- [x] Auto-scroll triggers — (a) when a conversation is initially opened and (b) immediately after the authenticated user successfully sends a message; polling/refetches MUST NOT auto-scroll (preserve reading position)
+- [x] Connect send message (append via API + cache invalidation)
+- [x] Connect read-tracking refresh (unread clears after viewing the conversation — driven by the message-list retrieval, which marks the WHOLE conversation read)
+- [x] Connect empty conversation thread (zero messages — valid state, input enabled)
+- [x] Connect loading state
+- [x] Connect empty states (no conversations / no thread selected)
+- [x] Connect error state with retry
 
 ### Cache Invalidation
-- [ ] Every successful message send invalidates `["conversations"]` AND `["messages"]`
-- [ ] Unread count updates immediately after viewing/sending (no manual refresh) — derived from the invalidated conversations query, no extra request
+- [x] Every successful message send invalidates `["conversations"]` AND `["messages"]`
+- [x] Unread count updates immediately after viewing/sending (no manual refresh) — derived from the invalidated conversations query, no extra request
 
 ### Cache Ownership (canonical)
-- [ ] **Conversation summaries** are owned by the `["conversations"]` query (list metadata: participants, `last_message`, `unread_count`, `updated_at`)
-- [ ] **Message threads** are owned exclusively by the `["messages"]` query (per-conversation thread data)
-- [ ] **Unread counts** are owned by the conversations query — `unread_count` lives on `ConversationResource` and the sidebar badge derives from it; there is no standalone unread cache
-- [ ] **No duplication:** message thread data must never be embedded inside conversation cache entries. `last_message` in the conversations cache is a summary only; the `["messages"]` cache is the single source of truth for the thread.
+- [x] **Conversation summaries** are owned by the `["conversations"]` query (list metadata: participants, `last_message`, `unread_count`, `updated_at`)
+- [x] **Message threads** are owned exclusively by the `["messages"]` query (per-conversation thread data)
+- [x] **Unread counts** are owned by the conversations query — `unread_count` lives on `ConversationResource` and the sidebar badge derives from it; there is no standalone unread cache
+- [x] **No duplication:** message thread data must never be embedded inside conversation cache entries. `last_message` in the conversations cache is a summary only; the `["messages"]` cache is the single source of truth for the thread.
 
 ### Stage 3 Completion Criteria
 Stage 3 is complete when:
 
-- [ ] API client functions exist and are used
-- [ ] React Query hooks integrate with the API
-- [ ] `MessagesPage` renders real conversation data
-- [ ] Unread badges reflect real data
-- [ ] `ChatWindow` loads and sends real messages
-- [ ] Mutations invalidate `["conversations"]` and `["messages"]`
-- [ ] Auto-scroll occurs on initial open and after own send only — never on polling/refetch
-- [ ] Empty conversations (zero messages) render as a valid thread with the input enabled
-- [ ] Sidebar unread badge is derived from the conversations query (no additional request)
-- [ ] Polling contract honored (interval, focus refetch, send-refetch, network-interruption recovery)
-- [ ] Cache ownership honored (no thread data duplicated into conversation summaries)
-- [ ] Loading, empty, and error states are API-driven
-- [ ] No mock data, no fake API, no temporary workarounds remain in the codebase
-- [ ] Vite/TypeScript build passes clean (no messaging-related errors)
-- [ ] ESLint — not configured in project (no messaging-related issues)
+- [x] API client functions exist and are used
+- [x] React Query hooks integrate with the API
+- [x] `MessagesPage` renders real conversation data
+- [x] Unread badges reflect real data
+- [x] `ChatWindow` loads and sends real messages
+- [x] Mutations invalidate `["conversations"]` and `["messages"]`
+- [x] Auto-scroll occurs on initial open and after own send only — never on polling/refetch
+- [x] Empty conversations (zero messages) render as a valid thread with the input enabled
+- [x] Sidebar unread badge is derived from the conversations query (no additional request)
+- [x] Polling contract honored (interval, focus refetch, send-refetch, network-interruption recovery)
+- [x] Cache ownership honored (no thread data duplicated into conversation summaries)
+- [x] Loading, empty, and error states are API-driven
+- [x] No mock data, no fake API, no temporary workarounds remain in the codebase
+- [x] Vite/TypeScript build passes clean (no messaging-related errors)
+- [x] ESLint — not configured in project (no messaging-related issues)
 
 Next stage (Stage 4) must not begin until all items above are satisfied.
 
